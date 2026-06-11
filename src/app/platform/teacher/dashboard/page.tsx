@@ -111,7 +111,7 @@ export default function TeacherDashboard() {
   })()
 
   return (
-    <div>
+    <div className="w-full">
       {/* Header */}
       <div className="mb-8">
         {loading ? <Skeleton className="h-8 w-64" /> : (
