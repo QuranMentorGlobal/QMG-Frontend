@@ -3,21 +3,19 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import type { CourseType } from '@/types/database'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type TeacherFull = {
-  // profile
   id: string
   first_name: string
   last_name: string
   country: string | null
   avatar_url: string | null
   bio: string | null
-  // teacher_profile
   years_experience: number
   specializations: CourseType[]
   teaching_languages: string[]
@@ -27,6 +25,9 @@ type TeacherFull = {
   total_reviews: number
   total_lessons: number
   ijazah_verified: boolean
+}
+
+type TeacherExtra = {
   available_days: string[]
 }
 
@@ -103,11 +104,11 @@ function Skeleton({ className = '' }: { className?: string }) {
 
 export default function TeacherProfilePage() {
   const params = useParams()
-  const router = useRouter()
   const supabase = createClient()
   const teacherId = params.id as string
 
   const [teacher, setTeacher] = useState<TeacherFull | null>(null)
+  const [extra, setExtra] = useState<TeacherExtra | null>(null)
   const [courses, setCourses] = useState<Course[]>([])
   const [reviews, setReviews] = useState<Review[]>([])
   const [loading, setLoading] = useState(true)
@@ -130,37 +131,39 @@ export default function TeacherProfilePage() {
 
       setTeacher(t as any)
 
-      // 2. Get their courses
-      const { data: teacherProfile } = await supabase
+      // 2. Get teacher_profile for extra fields (available_days)
+      const { data: tp } = await supabase
         .from('teacher_profiles')
-        .select('id')
+        .select('id, available_days')
         .eq('user_id', teacherId)
         .single()
 
-      if (teacherProfile) {
+      if (tp) {
+        setExtra({ available_days: (tp as any).available_days ?? [] })
+
+        // 3. Get courses
         const { data: c } = await supabase
           .from('courses')
           .select('id, title, course_type, description, level, age_group, duration_mins, price_usd, trial_price_usd')
-          .eq('teacher_id', teacherProfile.id)
+          .eq('teacher_id', tp.id)
           .eq('is_active', true)
 
         setCourses((c as Course[]) ?? [])
-
-        // 3. Get reviews
-        const { data: r } = await supabase
-          .from('reviews')
-          .select(`
-            id, rating, title, body, created_at,
-            profiles ( first_name, last_name, avatar_url )
-          `)
-          .eq('teacher_id', teacherId)
-          .eq('is_published', true)
-          .order('created_at', { ascending: false })
-          .limit(10)
-
-        setReviews((r as any) ?? [])
       }
 
+      // 4. Get reviews
+      const { data: r } = await supabase
+        .from('reviews')
+        .select(`
+          id, rating, title, body, created_at,
+          profiles ( first_name, last_name, avatar_url )
+        `)
+        .eq('teacher_id', teacherId)
+        .eq('is_published', true)
+        .order('created_at', { ascending: false })
+        .limit(10)
+
+      setReviews((r as any) ?? [])
       setLoading(false)
     }
 
@@ -236,7 +239,6 @@ export default function TeacherProfilePage() {
                 📍 {teacher.country ?? 'International'} &nbsp;·&nbsp; {teacher.years_experience} years experience
               </p>
 
-              {/* Rating row */}
               <div className="flex flex-wrap items-center gap-4 mb-4">
                 <div className="flex items-center gap-2">
                   <StarRating rating={teacher.avg_rating} size="lg" />
@@ -247,13 +249,12 @@ export default function TeacherProfilePage() {
                 </div>
               </div>
 
-              {/* Stats */}
-              <div className="flex flex-wrap gap-4">
+              <div className="flex flex-wrap gap-3">
                 {[
                   { label: 'Lessons Taught', value: teacher.total_lessons.toString() },
-                  { label: 'Languages', value: teacher.teaching_languages.join(', ') },
-                  { label: 'Trial Rate', value: `$${teacher.trial_rate_usd}` },
-                  { label: 'Hourly Rate', value: `$${teacher.hourly_rate_usd}` },
+                  { label: 'Languages',      value: teacher.teaching_languages.join(', ') },
+                  { label: 'Trial Rate',     value: `$${teacher.trial_rate_usd}` },
+                  { label: 'Hourly Rate',    value: `$${teacher.hourly_rate_usd}` },
                 ].map((s) => (
                   <div key={s.label} className="bg-white/10 rounded-xl px-4 py-2 text-center">
                     <p className="text-white font-bold text-sm">{s.value}</p>
@@ -279,16 +280,14 @@ export default function TeacherProfilePage() {
         </div>
       )}
 
-      {/* ── Two column ── */}
+      {/* ── Two column layout ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* Left — main content */}
         <div className="lg:col-span-2 space-y-6">
 
           {/* About */}
-          {loading ? (
-            <Skeleton className="h-32 w-full" />
-          ) : teacher?.bio && (
+          {!loading && teacher?.bio && (
             <div className="bg-white rounded-2xl border border-[#D4C99A] p-6">
               <h2 className="font-bold text-[#0D3D20] text-lg mb-3">About</h2>
               <p className="text-[#1B5E37]/70 text-sm leading-relaxed">{teacher.bio}</p>
@@ -321,7 +320,9 @@ export default function TeacherProfilePage() {
                       </p>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className="font-bold text-[#B8952A] text-sm">${course.price_usd}<span className="text-xs text-[#1B5E37]/50">/hr</span></p>
+                      <p className="font-bold text-[#B8952A] text-sm">
+                        ${course.price_usd}<span className="text-xs text-[#1B5E37]/50">/hr</span>
+                      </p>
                       <p className="text-xs text-[#1B5E37]/50">Trial: ${course.trial_price_usd}</p>
                     </div>
                   </div>
@@ -360,7 +361,6 @@ export default function TeacherProfilePage() {
                   return (
                     <div key={review.id} className="border-b border-[#F5F0E8] last:border-0 pb-4 last:pb-0">
                       <div className="flex items-start gap-3">
-                        {/* Avatar */}
                         {review.profiles?.avatar_url ? (
                           <img src={review.profiles.avatar_url} alt={studentName} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
                         ) : (
@@ -400,11 +400,11 @@ export default function TeacherProfilePage() {
           <div className="bg-white rounded-2xl border border-[#D4C99A] p-5">
             <h3 className="font-bold text-[#0D3D20] mb-4">Availability</h3>
             {loading ? (
-              <Skeleton className="h-32 w-full" />
+              <Skeleton className="h-16 w-full" />
             ) : (
               <div className="grid grid-cols-7 gap-1">
                 {DAY_ORDER.map((day) => {
-                  const available = teacher?.available_days?.includes(day) ?? false
+                  const available = extra?.available_days?.includes(day) ?? false
                   return (
                     <div key={day} className="flex flex-col items-center gap-1">
                       <span className="text-[9px] text-[#1B5E37]/50 font-medium">
@@ -443,7 +443,7 @@ export default function TeacherProfilePage() {
             )}
           </div>
 
-          {/* Book CTA sticky */}
+          {/* Book CTA */}
           <div className="bg-gradient-to-br from-[#1B5E37] to-[#0D3D20] rounded-2xl p-5 text-center">
             <p className="text-white font-bold mb-1">Ready to start?</p>
             <p className="text-white/60 text-xs mb-4">
