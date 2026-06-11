@@ -30,9 +30,9 @@ export async function updateSession(request: NextRequest) {
   )
 
   const { data: { user } } = await supabase.auth.getUser()
-
   const pathname = request.nextUrl.pathname
 
+  // Not logged in and trying to access platform → redirect to login
   if (!user && pathname.startsWith('/platform')) {
     const url = request.nextUrl.clone()
     url.pathname = '/auth/login'
@@ -40,9 +40,25 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // Logged in and on login/signup page → redirect to correct dashboard
   if (user && (pathname === '/auth/login' || pathname === '/auth/signup')) {
+    // Fetch their role to redirect correctly
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
     const url = request.nextUrl.clone()
-    url.pathname = '/platform/student/dashboard'
+
+    if (profile?.role === 'teacher') {
+      url.pathname = '/platform/teacher/dashboard'
+    } else if (profile?.role === 'admin') {
+      url.pathname = '/platform/student/dashboard' // admins use admin.domain
+    } else {
+      url.pathname = '/platform/student/dashboard'
+    }
+
     return NextResponse.redirect(url)
   }
 
