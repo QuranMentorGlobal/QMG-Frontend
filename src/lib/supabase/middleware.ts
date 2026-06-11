@@ -1,9 +1,11 @@
 // src/lib/supabase/middleware.ts
 // Used only inside middleware.ts to refresh sessions
 
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieMethodsServer } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import type { Database } from '@/types/database'
+
+type CookieToSet = Parameters<CookieMethodsServer['setAll']>[0][number]
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -16,7 +18,7 @@ export async function updateSession(request: NextRequest) {
         getAll() {
           return request.cookies.getAll()
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: CookieToSet[]) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           )
@@ -29,14 +31,10 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  // Refresh the session — IMPORTANT: do not add logic between createServerClient
-  // and supabase.auth.getUser()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // ── Route Protection ──────────────────────────────────────
   const pathname = request.nextUrl.pathname
 
-  // Redirect unauthenticated users away from protected routes
   if (!user && pathname.startsWith('/platform')) {
     const url = request.nextUrl.clone()
     url.pathname = '/auth/login'
@@ -44,7 +42,6 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Redirect authenticated users away from auth pages
   if (user && (pathname === '/auth/login' || pathname === '/auth/signup')) {
     const url = request.nextUrl.clone()
     url.pathname = '/platform/student/dashboard'
