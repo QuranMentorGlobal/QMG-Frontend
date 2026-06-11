@@ -108,7 +108,7 @@ export default function TeacherProfile() {
   }
 
   return (
-    <div className="w-full max-w-3xl">
+    <div className="w-full">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-[#0D3D20]">My Profile</h1>
