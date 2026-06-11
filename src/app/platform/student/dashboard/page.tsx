@@ -67,12 +67,13 @@ export default function StudentDashboard() {
       }
 
       // 2. Profile
-      const { data: prof } = await supabase
+      const { data: profRaw } = await supabase
         .from('profiles')
         .select('id, full_name, email, avatar_url, role')
         .eq('id', user.id)
         .single()
 
+      const prof = profRaw as any
       if (prof) {
         setProfile(prof)
         if (prof.role === 'teacher') {
