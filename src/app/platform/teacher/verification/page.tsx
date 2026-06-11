@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ShieldCheck, Upload, CheckCircle, Clock, XCircle, AlertCircle } from 'lucide-react'
+import { ShieldCheck, Upload, Clock, XCircle, AlertCircle } from 'lucide-react'
 
 const SPECIALIZATIONS = ['Noorani Qaida', 'Tajweed', 'Hifz', 'Tafseer', 'Islamic Studies', 'Ijazah']
 const LANGUAGES = ['English', 'Urdu', 'Arabic', 'Pashto', 'Bengali', 'French', 'Turkish']
@@ -75,17 +75,16 @@ export default function VerificationPage() {
 
       const { data: prof } = await supabase
         .from('profiles').select('*').eq('id', user.id).single()
-     if (!prof) { router.replace('/auth/login'); return }
-    const p = prof as any
+      if (!prof) { router.replace('/auth/login'); return }
+      const p = prof as any
       if (p.role !== 'teacher') { router.replace('/platform/student/dashboard'); return }
-        setFirstName(p.first_name || '')
-        setLastName(p.last_name || '')
-        setGender(p.gender || '')
-        setCountry(p.country || '')
-        setPhone(p.phone || '')
-        setBio(p.bio || '')
-        setPhotoUrl(p.avatar_url || '')
-      }
+      setFirstName(p.first_name || '')
+      setLastName(p.last_name || '')
+      setGender(p.gender || '')
+      setCountry(p.country || '')
+      setPhone(p.phone || '')
+      setBio(p.bio || '')
+      setPhotoUrl(p.avatar_url || '')
 
       const { data: tp } = await supabase
         .from('teacher_profiles').select('*').eq('user_id', user.id).single()
@@ -194,7 +193,6 @@ export default function VerificationPage() {
       await (supabase.from('teacher_profiles') as any).insert({ ...updateData, user_id: userId })
     }
 
-    // Notify admin by email
     try {
       await fetch('/api/email', {
         method: 'POST',
