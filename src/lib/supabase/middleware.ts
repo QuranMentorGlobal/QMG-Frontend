@@ -1,11 +1,9 @@
 // src/lib/supabase/middleware.ts
-// Used only inside middleware.ts to refresh sessions
-
-import { createServerClient, type CookieMethodsServer } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import type { Database } from '@/types/database'
 
-type CookieToSet = Parameters<CookieMethodsServer['setAll']>[0][number]
+type CookieToSet = { name: string; value: string; options?: Record<string, unknown> }
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -24,7 +22,7 @@ export async function updateSession(request: NextRequest) {
           )
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, options as Record<string, unknown>)
           )
         },
       },
