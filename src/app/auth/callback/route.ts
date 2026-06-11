@@ -11,13 +11,13 @@ export async function GET(request: Request) {
     if (!error) {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        const { data: profile } = await supabase
+        const { data } = await supabase
           .from('profiles')
           .select('role')
           .eq('id', user.id)
-          .single()
+          .single() as { data: { role: string } | null, error: unknown }
 
-        if (profile && profile.role === 'teacher') {
+        if (data?.role === 'teacher') {
           return NextResponse.redirect(`${origin}/platform/teacher/dashboard`)
         }
         return NextResponse.redirect(`${origin}/platform/student/dashboard`)
