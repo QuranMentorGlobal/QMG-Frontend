@@ -1,0 +1,92 @@
+/* src/styles/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Google Fonts ─────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&family=DM+Sans:wght@300;400;500;600&family=Amiri:wght@400;700&display=swap');
+
+/* ── Base ─────────────────────────────────────────────────── */
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply font-body text-ink bg-white antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+}
+
+/* ── Reusable component classes ───────────────────────────── */
+@layer components {
+
+  /* Buttons */
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-6 py-3 rounded-full
+           bg-green text-white font-semibold text-sm
+           hover:bg-green-mid transition-all duration-200
+           hover:-translate-y-0.5 hover:shadow-green
+           focus:outline-none focus:ring-2 focus:ring-green focus:ring-offset-2;
+  }
+
+  .btn-gold {
+    @apply inline-flex items-center gap-2 px-6 py-3 rounded-full
+           bg-gold text-white font-semibold text-sm
+           hover:bg-gold-light transition-all duration-200
+           hover:-translate-y-0.5 hover:shadow-gold
+           focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center gap-2 px-6 py-3 rounded-full
+           border-2 border-green text-green font-semibold text-sm
+           hover:bg-green hover:text-white transition-all duration-200
+           focus:outline-none focus:ring-2 focus:ring-green focus:ring-offset-2;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg
+           text-ink-mid font-medium text-sm
+           hover:bg-green-light hover:text-green transition-all duration-200;
+  }
+
+  /* Cards */
+  .card {
+    @apply bg-white rounded-card border border-gray-100 shadow-card
+           transition-all duration-300;
+  }
+
+  .card-hover {
+    @apply card hover:-translate-y-1 hover:shadow-cardL;
+  }
+
+  /* Form inputs */
+  .input {
+    @apply w-full px-4 py-3 rounded-xl border border-gray-200
+           text-sm text-ink font-body bg-white
+           focus:outline-none focus:border-green focus:ring-2 focus:ring-green/10
+           placeholder:text-ink-light transition-all duration-200;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-ink-mid mb-1.5;
+  }
+
+  /* Section label (small gold uppercase label above headings) */
+  .section-label {
+    @apply text-xs font-semibold tracking-widest uppercase text-gold mb-2;
+  }
+
+  /* Dashboard stat card */
+  .stat-card {
+    @apply card p-5 flex flex-col gap-1;
+  }
+}
