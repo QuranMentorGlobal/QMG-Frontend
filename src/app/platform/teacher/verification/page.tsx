@@ -75,9 +75,9 @@ export default function VerificationPage() {
 
       const { data: prof } = await supabase
         .from('profiles').select('*').eq('id', user.id).single()
-      if (prof) {
-        const p = prof as any
-        if (p.role !== 'teacher') { router.replace('/platform/student/dashboard'); return }
+     if (!prof) { router.replace('/auth/login'); return }
+    const p = prof as any
+      if (p.role !== 'teacher') { router.replace('/platform/student/dashboard'); return }
         setFirstName(p.first_name || '')
         setLastName(p.last_name || '')
         setGender(p.gender || '')
