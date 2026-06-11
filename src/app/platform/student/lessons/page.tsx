@@ -206,7 +206,7 @@ export default function StudentLessons() {
 
                     {/* Homework */}
                     {l.homework && (
-                      <div className="text-xs text-ink-light bg-cream rounded-lg px-3 py-1.5 max-w-48">
+                      <div className="text-xs text-ink-light bg-cream rounded-lg px-3 py-1.5 max-w-xs">
                         📝 <span className="font-medium">Homework:</span> {l.homework}
                       </div>
                     )}
