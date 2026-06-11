@@ -248,7 +248,7 @@ export default function BrowseTeachers() {
   // ─── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <div>
+    <div className="w-full">
       {/* Header */}
       <div className="mb-6">
         <h1 className="font-display text-3xl font-bold text-[#0D3D20] mb-1">
