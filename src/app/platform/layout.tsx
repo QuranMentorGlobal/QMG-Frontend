@@ -5,8 +5,6 @@ import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type UserRole = 'student' | 'teacher' | 'parent' | 'admin'
 
 interface NavItem {
@@ -15,32 +13,34 @@ interface NavItem {
   icon: string
 }
 
-// ─── Nav definitions ──────────────────────────────────────────────────────────
+type ProfileRow = {
+  role: string
+  first_name: string | null
+  last_name: string | null
+}
 
 const studentNav: NavItem[] = [
-  { label: 'Dashboard',        href: '/platform/student/dashboard',  icon: '🏠' },
-  { label: 'Browse Teachers',  href: '/platform/teachers',           icon: '🔍' },
-  { label: 'My Bookings',      href: '/platform/student/bookings',   icon: '📅' },
-  { label: 'My Lessons',       href: '/platform/student/lessons',    icon: '📚' },
-  { label: 'Profile',          href: '/platform/student/profile',    icon: '👤' },
+  { label: 'Dashboard',       href: '/platform/student/dashboard', icon: '🏠' },
+  { label: 'Browse Teachers', href: '/platform/teachers',          icon: '🔍' },
+  { label: 'My Bookings',     href: '/platform/student/bookings',  icon: '📅' },
+  { label: 'My Lessons',      href: '/platform/student/lessons',   icon: '📚' },
+  { label: 'Profile',         href: '/platform/student/profile',   icon: '👤' },
 ]
 
 const teacherNav: NavItem[] = [
-  { label: 'Dashboard',    href: '/platform/teacher/dashboard',     icon: '🏠' },
-  { label: 'Verification', href: '/platform/teacher/verification',  icon: '✅' },
-  { label: 'My Courses',   href: '/platform/teacher/courses',       icon: '📖' },
-  { label: 'Bookings',     href: '/platform/teacher/bookings',      icon: '📅' },
-  { label: 'Profile',      href: '/platform/teacher/profile',       icon: '👤' },
+  { label: 'Dashboard',    href: '/platform/teacher/dashboard',    icon: '🏠' },
+  { label: 'Verification', href: '/platform/teacher/verification', icon: '✅' },
+  { label: 'My Courses',   href: '/platform/teacher/courses',      icon: '📖' },
+  { label: 'Bookings',     href: '/platform/teacher/bookings',     icon: '📅' },
+  { label: 'Profile',      href: '/platform/teacher/profile',      icon: '👤' },
 ]
 
 const parentNav: NavItem[] = [
-  { label: 'Dashboard',   href: '/platform/parent/dashboard',  icon: '🏠' },
-  { label: 'My Children', href: '/platform/parent/children',   icon: '👨‍👩‍👧' },
-  { label: 'Billing',     href: '/platform/parent/billing',    icon: '💳' },
-  { label: 'Browse Teachers', href: '/platform/teachers',      icon: '🔍' },
+  { label: 'Dashboard',       href: '/platform/parent/dashboard', icon: '🏠' },
+  { label: 'My Children',     href: '/platform/parent/children',  icon: '👨‍👩‍👧' },
+  { label: 'Billing',         href: '/platform/parent/billing',   icon: '💳' },
+  { label: 'Browse Teachers', href: '/platform/teachers',         icon: '🔍' },
 ]
-
-// ─── Logo ─────────────────────────────────────────────────────────────────────
 
 function Logo() {
   return (
@@ -53,8 +53,6 @@ function Logo() {
     </Link>
   )
 }
-
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
 
 function Sidebar({
   nav, role, userName, onSignOut,
@@ -69,14 +67,14 @@ function Sidebar({
   const roleLabel: Record<UserRole, string> = {
     student: 'Student',
     teacher: 'Teacher',
-    parent: 'Parent',
-    admin: 'Admin',
+    parent:  'Parent',
+    admin:   'Admin',
   }
 
   const roleColor: Record<UserRole, string> = {
     student: 'bg-blue-100 text-blue-700',
-    teacher: 'bg-[#1B5E37]/10 text-[#1B5E37]',
-    parent:  'bg-[#B8952A]/10 text-[#B8952A]',
+    teacher: 'bg-green-100 text-green-700',
+    parent:  'bg-yellow-100 text-yellow-700',
     admin:   'bg-red-100 text-red-700',
   }
 
@@ -84,7 +82,6 @@ function Sidebar({
     <aside className="hidden md:flex flex-col w-64 bg-white border-r border-[#EDE6D6] min-h-screen fixed top-0 left-0 z-40">
       <Logo />
 
-      {/* User info */}
       <div className="px-5 py-4 border-b border-[#F5F0E8]">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-[#1B5E37] flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
@@ -99,7 +96,6 @@ function Sidebar({
         </div>
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {nav.map(item => {
           const active = pathname === item.href || pathname.startsWith(item.href + '/')
@@ -120,7 +116,6 @@ function Sidebar({
         })}
       </nav>
 
-      {/* Sign out */}
       <div className="px-3 pb-6 pt-2 border-t border-[#F5F0E8]">
         <button
           onClick={onSignOut}
@@ -134,8 +129,6 @@ function Sidebar({
     </aside>
   )
 }
-
-// ─── Bottom tab bar (mobile) ──────────────────────────────────────────────────
 
 function BottomTabs({ nav }: { nav: NavItem[] }) {
   const pathname = usePathname()
@@ -162,8 +155,6 @@ function BottomTabs({ nav }: { nav: NavItem[] }) {
   )
 }
 
-// ─── Layout ───────────────────────────────────────────────────────────────────
-
 export default function PlatformLayout({ children }: { children: React.ReactNode }) {
   const [role, setRole]         = useState<UserRole>('student')
   const [userName, setUserName] = useState('')
@@ -180,11 +171,12 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
         .from('profiles')
         .select('role, first_name, last_name')
         .eq('id', user.id)
+        .returns<ProfileRow>()
         .single()
 
       if (!profile) { router.push('/auth/login'); return }
 
-      setRole(profile.role as UserRole)
+      setRole((profile.role as UserRole) ?? 'student')
       setUserName(`${profile.first_name ?? ''} ${profile.last_name ?? ''}`.trim() || 'User')
       setReady(true)
     }
@@ -200,7 +192,7 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
     student: studentNav,
     teacher: teacherNav,
     parent:  parentNav,
-    admin:   studentNav, // fallback — admin has own layout
+    admin:   studentNav,
   }
   const nav = navMap[role] ?? studentNav
 
@@ -219,8 +211,6 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
     <div className="min-h-screen bg-[#F5F0E8]">
       <Sidebar nav={nav} role={role} userName={userName} onSignOut={handleSignOut} />
       <BottomTabs nav={nav} />
-
-      {/* Main content — offset for sidebar on desktop, padding-bottom for mobile tab bar */}
       <main className="md:ml-64 pb-20 md:pb-0 min-h-screen">
         {children}
       </main>
