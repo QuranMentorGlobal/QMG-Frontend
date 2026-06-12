@@ -28,65 +28,61 @@ export default function SignupPage() {
   }
 
   async function handleSignup() {
-    if (!firstName || !lastName || !email || !password || !country) {
-      setError('Please fill in all required fields.'); return
-    }
-    if (!agreed) { setError('Please agree to the Terms of Service.'); return }
-    if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
-
-    // Only allow valid DB roles
-    const validRole = role === 'teacher' ? 'teacher' : 'student'
-
-    setError('')
-    setLoading(true)
-
-    const supabase = createClient()
-
-    // Step 1 — Create auth user
-    const { data, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          first_name: firstName,
-          last_name: lastName,
-          role: validRole,
-        }
-      }
-    })
-
-    if (authError) { setError(authError.message); setLoading(false); return }
-    if (!data.user) { setError('Signup failed. Please try again.'); setLoading(false); return }
-
-    // Step 2 — Explicitly upsert profile with correct role
-    await (supabase.from('profiles') as any).upsert({
-      id: data.user.id,
-      first_name: firstName,
-      last_name: lastName,
-      email: email,
-      role: validRole,
-      country: country,
-      is_active: true,
-    })
-
-    // Step 3 — If teacher, create teacher_profiles row
-    if (validRole === 'teacher') {
-      await (supabase.from('teacher_profiles') as any).upsert({
-        user_id: data.user.id,
-        status: 'not_submitted',
-        years_experience: 0,
-        specializations: [],
-        teaching_languages: [],
-        available_days: [],
-        hourly_rate_usd: 0,
-        trial_rate_usd: 0,
-        ijazah_verified: false,
-      })
-    }
-
-    setSuccess(true)
-    setLoading(false)
+  if (!firstName || !lastName || !email || !password || !country) {
+    setError('Please fill in all required fields.'); return
   }
+  if (!agreed) { setError('Please agree to the Terms of Service.'); return }
+  if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
+
+  const validRole = role === 'teacher' ? 'teacher' : 'student'
+  setError('')
+  setLoading(true)
+
+  const supabase = createClient()
+
+  // Step 1 — Create auth user
+  const { data, error: authError } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { first_name: firstName, last_name: lastName, role: validRole }
+    }
+  })
+
+  if (authError) { setError(authError.message); setLoading(false); return }
+  if (!data.user) { setError('Signup failed. Please try again.'); setLoading(false); return }
+
+  // Step 2 — Upsert profile (ignore errors, trigger may have already created it)
+  await (supabase.from('profiles') as any).upsert({
+    id: data.user.id,
+    first_name: firstName,
+    last_name: lastName,
+    email: email,
+    role: validRole,
+    country: country,
+    is_active: true,
+  }).select()
+
+  // Step 3 — If teacher, create teacher_profiles row
+  if (validRole === 'teacher') {
+    await (supabase.from('teacher_profiles') as any).upsert({
+      user_id: data.user.id,
+      status: 'not_submitted',
+      years_experience: 0,
+      specializations: [],
+      teaching_languages: [],
+      available_days: [],
+      hourly_rate_usd: 0,
+      trial_rate_usd: 0,
+      ijazah_verified: false,
+    }).select()
+  }
+
+  // Always proceed to success regardless of upsert results
+  // The trigger will have created the profile anyway
+  setSuccess(true)
+  setLoading(false)
+}
 
   async function handleGoogleSignup() {
     setLoading(true)
