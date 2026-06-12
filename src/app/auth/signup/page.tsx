@@ -59,7 +59,7 @@ export default function SignupPage() {
     if (!data.user) { setError('Signup failed. Please try again.'); setLoading(false); return }
 
     // Step 2 — Explicitly upsert profile with correct role
-    await supabase.from('profiles').upsert({
+    await (supabase.from('profiles') as any).upsert({
       id: data.user.id,
       first_name: firstName,
       last_name: lastName,
@@ -71,7 +71,7 @@ export default function SignupPage() {
 
     // Step 3 — If teacher, create teacher_profiles row
     if (validRole === 'teacher') {
-      await supabase.from('teacher_profiles').upsert({
+      await (supabase.from('teacher_profiles') as any).upsert({
         user_id: data.user.id,
         status: 'not_submitted',
         years_experience: 0,
