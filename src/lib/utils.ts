@@ -35,12 +35,12 @@ export function formatTime(timeStr: string): string {
 // Course type → display name
 export function courseTypeLabel(type: string): string {
   const labels: Record<string, string> = {
-    noorani_qaida:  'Noorani Qaida',
-    tajweed:        'Tajweed',
-    hifz:           'Hifz (Memorization)',
-    tafseer:        'Tafseer',
-    islamic_studies:'Islamic Studies',
-    ijazah:         'Ijazah',
+    'Noorani Qaida':  'Noorani Qaida',
+    'Tajweed':        'Tajweed',
+    'Hifz':           'Hifz (Memorization)',
+    'Tafseer':        'Tafseer',
+    'Islamic Studies': 'Islamic Studies',
+    'Ijazah':         'Ijazah',
   }
   return labels[type] ?? type
 }
