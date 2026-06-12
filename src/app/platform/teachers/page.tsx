@@ -1,364 +1,638 @@
-// src/app/platform/teachers/page.tsx
+// src/app/platform/teachers/[id]/book/page.tsx
 'use client'
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { PublicTeacher, CourseType } from '@/types/database'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import type { CourseType } from '@/types/database'
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-const COURSE_LABELS: Record<CourseType, string> = {
-  noorani_qaida:    'Noorani Qaida',
-  tajweed:          'Tajweed',
-  hifz:             'Hifz',
-  tafseer:          'Tafseer',
-  islamic_studies:  'Islamic Studies',
-  ijazah:           'Ijazah',
+type Teacher = {
+  id: string
+  first_name: string
+  last_name: string
+  avatar_url: string | null
+  country: string | null
+  avg_rating: number | null
+  trial_rate_usd: number
+  hourly_rate_usd: number
+  available_days: string[]
 }
+
+type Course = {
+  id: string
+  title: string
+  course_type: CourseType
+  level: string
+  age_group: string
+  duration_mins: number
+  price_usd: number
+  trial_price_usd: number
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const COURSE_ICONS: Record<CourseType, string> = {
-  noorani_qaida:    '🔤',
-  tajweed:          '🎵',
-  hifz:             '📖',
-  tafseer:          '🌙',
-  islamic_studies:  '☪️',
-  ijazah:           '🏅',
+  'Noorani Qaida':   '🔤',
+  'Tajweed':         '🎵',
+  'Hifz':            '📖',
+  'Tafseer':         '🌙',
+  'Islamic Studies': '☪️',
+  'Ijazah':          '🏅',
 }
 
-const ALL_FILTERS: { value: CourseType | 'all'; label: string }[] = [
-  { value: 'all',           label: 'All Teachers' },
-  { value: 'noorani_qaida', label: 'Noorani Qaida' },
-  { value: 'tajweed',       label: 'Tajweed' },
-  { value: 'hifz',          label: 'Hifz' },
-  { value: 'tafseer',       label: 'Tafseer' },
-  { value: 'islamic_studies', label: 'Islamic Studies' },
-  { value: 'ijazah',        label: 'Ijazah' },
+const TIME_SLOTS = [
+  '06:00', '07:00', '08:00', '09:00', '10:00', '11:00',
+  '12:00', '13:00', '14:00', '15:00', '16:00', '17:00',
+  '18:00', '19:00', '20:00', '21:00', '22:00',
 ]
+
+const RECURRENCE_OPTIONS = [
+  { value: 'once',    label: 'One-time trial',     desc: 'Just this lesson' },
+  { value: 'weekly',  label: 'Weekly',              desc: 'Same time every week' },
+  { value: 'biweekly', label: 'Every 2 weeks',     desc: 'Every other week' },
+]
+
+const DAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 function getInitials(first: string, last: string) {
   return `${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase()
-}
-
-function StarRating({ rating }: { rating: number | null }) {
-  const r = rating ?? 0
-  return (
-    <div className="flex items-center gap-1">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <svg
-          key={star}
-          className={`w-3.5 h-3.5 ${star <= Math.round(r) ? 'text-[#B8952A]' : 'text-gray-200'}`}
-          fill="currentColor"
-          viewBox="0 0 20 20"
-        >
-          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-        </svg>
-      ))}
-      <span className="text-xs text-[#1B5E37]/60 ml-0.5">
-        {r > 0 ? r.toFixed(1) : 'New'}
-      </span>
-    </div>
-  )
 }
 
 function Skeleton({ className = '' }: { className?: string }) {
   return <div className={`animate-pulse rounded-xl bg-[#E8E4DA] ${className}`} />
 }
 
-// ─── Teacher Card ─────────────────────────────────────────────────────────────
+// ─── Step indicator ───────────────────────────────────────────────────────────
 
-function TeacherCard({ teacher }: { teacher: PublicTeacher }) {
+function Steps({ current }: { current: number }) {
+  const steps = ['Choose Course', 'Pick Schedule', 'Confirm']
   return (
-    <div className="bg-white rounded-2xl border border-[#D4C99A] shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col">
-
-      {/* Top section */}
-      <div className="bg-gradient-to-br from-[#1B5E37] to-[#0D3D20] p-5 relative">
-        {/* Ijazah badge */}
-        {teacher.ijazah_verified && (
-          <div className="absolute top-3 right-3 bg-[#B8952A] text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-            🏅 Ijazah
-          </div>
-        )}
-
-        <div className="flex items-center gap-4">
-          {/* Avatar */}
-          <div className="flex-shrink-0">
-            {teacher.avatar_url ? (
-              <img
-                src={teacher.avatar_url}
-                alt={`${teacher.first_name} ${teacher.last_name}`}
-                className="w-16 h-16 rounded-full object-cover border-2 border-[#B8952A]/50"
-              />
-            ) : (
-              <div className="w-16 h-16 rounded-full bg-[#B8952A] flex items-center justify-center text-white font-bold text-xl border-2 border-[#B8952A]/50">
-                {getInitials(teacher.first_name, teacher.last_name)}
+    <div className="flex items-center gap-2 mb-8">
+      {steps.map((label, i) => {
+        const num = i + 1
+        const done = num < current
+        const active = num === current
+        return (
+          <div key={label} className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                done ? 'bg-[#1B5E37] text-white' :
+                active ? 'bg-[#B8952A] text-white' :
+                'bg-[#E8E4DA] text-[#1B5E37]/40'
+              }`}>
+                {done ? '✓' : num}
               </div>
+              <span className={`text-xs font-medium hidden sm:block ${active ? 'text-[#0D3D20]' : 'text-[#1B5E37]/40'}`}>
+                {label}
+              </span>
+            </div>
+            {i < steps.length - 1 && (
+              <div className={`flex-1 h-px w-8 ${done ? 'bg-[#1B5E37]' : 'bg-[#D4C99A]'}`} />
             )}
           </div>
-
-          {/* Name + info */}
-          <div className="flex-1 min-w-0">
-            <h3 className="text-white font-bold text-lg leading-tight">
-              {teacher.first_name} {teacher.last_name}
-            </h3>
-            <p className="text-white/60 text-xs mt-0.5">
-              {teacher.country ?? 'International'} · {teacher.years_experience}yr exp
-            </p>
-            <div className="mt-1.5">
-              <StarRating rating={teacher.avg_rating} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Body */}
-      <div className="p-4 flex-1 flex flex-col">
-
-        {/* Bio */}
-        {teacher.bio && (
-          <p className="text-[#1B5E37]/70 text-xs leading-relaxed mb-3 line-clamp-2">
-            {teacher.bio}
-          </p>
-        )}
-
-        {/* Specializations */}
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          {teacher.specializations.slice(0, 3).map((spec) => (
-            <span
-              key={spec}
-              className="text-[10px] font-semibold bg-[#F5F0E8] text-[#1B5E37] border border-[#D4C99A] px-2 py-0.5 rounded-full"
-            >
-              {COURSE_ICONS[spec]} {COURSE_LABELS[spec]}
-            </span>
-          ))}
-          {teacher.specializations.length > 3 && (
-            <span className="text-[10px] text-[#1B5E37]/50 px-1 py-0.5">
-              +{teacher.specializations.length - 3} more
-            </span>
-          )}
-        </div>
-
-        {/* Languages */}
-        <div className="flex items-center gap-1.5 mb-4">
-          <span className="text-xs text-[#1B5E37]/50">🗣️</span>
-          <span className="text-xs text-[#1B5E37]/60">
-            {teacher.teaching_languages.join(', ')}
-          </span>
-        </div>
-
-        {/* Stats row */}
-        <div className="flex items-center gap-3 mb-4 mt-auto">
-          <div className="text-center">
-            <p className="text-lg font-extrabold text-[#0D3D20]">{teacher.total_lessons}</p>
-            <p className="text-[10px] text-[#1B5E37]/50">Lessons</p>
-          </div>
-          <div className="w-px h-8 bg-[#D4C99A]" />
-          <div className="text-center">
-            <p className="text-lg font-extrabold text-[#0D3D20]">{teacher.total_reviews}</p>
-            <p className="text-[10px] text-[#1B5E37]/50">Reviews</p>
-          </div>
-          <div className="w-px h-8 bg-[#D4C99A]" />
-          <div className="text-center flex-1">
-            <p className="text-lg font-extrabold text-[#B8952A]">${teacher.hourly_rate_usd}</p>
-            <p className="text-[10px] text-[#1B5E37]/50">per hour</p>
-          </div>
-        </div>
-
-        {/* CTA buttons */}
-        <div className="flex gap-2">
-          <Link
-            href={`/platform/teachers/${teacher.id}`}
-            className="flex-1 text-center bg-[#F5F0E8] text-[#1B5E37] border border-[#D4C99A] px-3 py-2 rounded-xl text-xs font-semibold hover:border-[#1B5E37] transition-colors"
-          >
-            View Profile
-          </Link>
-          <Link
-            href={`/platform/teachers/${teacher.id}/book`}
-            className="flex-1 text-center bg-[#1B5E37] text-white px-3 py-2 rounded-xl text-xs font-semibold hover:bg-[#0D3D20] transition-colors"
-          >
-            Book Trial →
-          </Link>
-        </div>
-      </div>
+        )
+      })}
     </div>
   )
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function BrowseTeachers() {
+export default function BookTrialPage() {
+  const params = useParams()
+  const router = useRouter()
   const supabase = createClient()
+  const teacherId = params.id as string
 
-  const [teachers, setTeachers] = useState<PublicTeacher[]>([])
-  const [filtered, setFiltered] = useState<PublicTeacher[]>([])
+  // Data
+  const [teacher, setTeacher] = useState<Teacher | null>(null)
+  const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeFilter, setActiveFilter] = useState<CourseType | 'all'>('all')
-  const [search, setSearch] = useState('')
-  const [maxPrice, setMaxPrice] = useState<number>(200)
-  const [sortBy, setSortBy] = useState<'rating' | 'price_asc' | 'price_desc' | 'lessons'>('rating')
+  const [submitting, setSubmitting] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const [error, setError] = useState('')
 
-  // ── Fetch teachers ──
+  // Form state
+  const [step, setStep] = useState(1)
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
+  const [selectedDay, setSelectedDay] = useState('')
+  const [selectedTime, setSelectedTime] = useState('')
+  const [recurrence, setRecurrence] = useState('once')
+  const [startDate, setStartDate] = useState('')
+  const [notes, setNotes] = useState('')
+  const [timezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone)
+
+  // ── Load teacher + courses ──
   useEffect(() => {
     async function load() {
-      const { data } = await supabase
+      // Auth check
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        router.replace('/auth/login')
+        return
+      }
+
+      // Get teacher from public_teachers view
+      const { data: t } = await supabase
         .from('public_teachers')
         .select('*')
-        .order('avg_rating', { ascending: false })
+        .eq('id', teacherId)
+        .single()
 
-      setTeachers((data as PublicTeacher[]) ?? [])
-      setFiltered((data as PublicTeacher[]) ?? [])
+      if (!t) {
+        router.replace('/platform/teachers')
+        return
+      }
+
+      // Get available_days from teacher_profiles
+      const { data: tp } = await supabase
+        .from('teacher_profiles')
+        .select('id, available_days')
+        .eq('user_id', teacherId)
+        .single()
+
+      setTeacher({
+        ...(t as any),
+        available_days: (tp as any)?.available_days ?? [],
+      })
+
+      // Get courses
+      if (tp) {
+        const { data: c } = await supabase
+          .from('courses')
+          .select('id, title, course_type, level, age_group, duration_mins, price_usd, trial_price_usd')
+          .eq('teacher_id', teacherId)
+          .eq('is_active', true)
+
+        setCourses((c as Course[]) ?? [])
+        if (c && c.length > 0) setSelectedCourse(c[0] as Course)
+      }
+
       setLoading(false)
     }
     load()
-  }, [])
+  }, [teacherId])
 
-  // ── Filter + sort ──
-  useEffect(() => {
-    let result = [...teachers]
-
-    // Course filter
-    if (activeFilter !== 'all') {
-      result = result.filter((t) => t.specializations.includes(activeFilter))
+  // ── Submit booking ──
+  async function handleConfirm() {
+    if (!selectedCourse || !selectedDay || !selectedTime || !startDate) {
+      setError('Please fill in all required fields.')
+      return
     }
 
-    // Search
-    if (search.trim()) {
-      const q = search.toLowerCase()
-      result = result.filter(
-        (t) =>
-          t.first_name.toLowerCase().includes(q) ||
-          t.last_name.toLowerCase().includes(q) ||
-          t.bio?.toLowerCase().includes(q) ||
-          t.specializations.some((s) => COURSE_LABELS[s].toLowerCase().includes(q))
-      )
+    setSubmitting(true)
+    setError('')
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { router.replace('/auth/login'); return }
+
+    const { error: bookingError } = await supabase
+      .from('bookings')
+      .insert([{
+        student_id:    user.id,
+        teacher_id:    teacherId,
+        course_id:     selectedCourse.id,
+        status:        'pending' as const,
+        start_date:    startDate,
+        recurrence:    recurrence,
+        session_time:  selectedTime,
+        duration_mins: selectedCourse.duration_mins,
+        price_usd:     selectedCourse.trial_price_usd,
+        is_trial:      true,
+        student_notes: notes || null,
+      }] as any)
+
+    if (bookingError) {
+      console.error('Booking error:', bookingError)
+      setError(bookingError.message || 'Something went wrong. Please try again.')
+      setSubmitting(false)
+      return
     }
 
-    // Price filter
-    result = result.filter((t) => t.hourly_rate_usd <= maxPrice)
+    setSuccess(true)
+    setSubmitting(false)
+  }
 
-    // Sort
-    if (sortBy === 'rating') result.sort((a, b) => (b.avg_rating ?? 0) - (a.avg_rating ?? 0))
-    if (sortBy === 'price_asc') result.sort((a, b) => a.hourly_rate_usd - b.hourly_rate_usd)
-    if (sortBy === 'price_desc') result.sort((a, b) => b.hourly_rate_usd - a.hourly_rate_usd)
-    if (sortBy === 'lessons') result.sort((a, b) => b.total_lessons - a.total_lessons)
+  // ── Success screen ──
+  if (success) {
+    return (
+      <div className="w-full max-w-lg mx-auto text-center py-16">
+        <div className="w-20 h-20 rounded-full bg-[#1B5E37] flex items-center justify-center text-4xl mx-auto mb-6">
+          ✅
+        </div>
+        <h1 className="text-2xl font-bold text-[#0D3D20] mb-2">Booking Requested!</h1>
+        <p className="text-[#1B5E37]/70 text-sm mb-2">
+          Your trial lesson with <strong>{teacher?.first_name} {teacher?.last_name}</strong> has been sent.
+        </p>
+        <p className="text-[#1B5E37]/50 text-xs mb-8">
+          The teacher will confirm your booking shortly. You'll see it in your dashboard.
+        </p>
+        <div className="bg-[#F5F0E8] rounded-2xl border border-[#D4C99A] p-5 text-left mb-8 space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-[#1B5E37]/60">Course</span>
+            <span className="font-semibold text-[#0D3D20]">{selectedCourse?.title}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-[#1B5E37]/60">Day & Time</span>
+            <span className="font-semibold text-[#0D3D20]">{selectedDay} at {selectedTime}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-[#1B5E37]/60">Start Date</span>
+            <span className="font-semibold text-[#0D3D20]">{new Date(startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-[#1B5E37]/60">Trial Price</span>
+            <span className="font-bold text-[#B8952A]">${selectedCourse?.trial_price_usd}</span>
+          </div>
+        </div>
+        <Link
+          href="/platform/student/dashboard"
+          className="inline-block bg-[#1B5E37] text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-[#0D3D20] transition-colors"
+        >
+          Go to Dashboard →
+        </Link>
+      </div>
+    )
+  }
 
-    setFiltered(result)
-  }, [teachers, activeFilter, search, maxPrice, sortBy])
-
-  // ─── Render ───────────────────────────────────────────────────────────────────
+  // ─── Main render ─────────────────────────────────────────────────────────────
 
   return (
     <div className="w-full">
+
+      {/* Back */}
+      <Link
+        href={`/platform/teachers/${teacherId}`}
+        className="inline-flex items-center gap-1.5 text-sm text-[#1B5E37]/60 hover:text-[#1B5E37] mb-6 transition-colors"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+        Back to Profile
+      </Link>
+
       {/* Header */}
       <div className="mb-6">
-        <h1 className="font-display text-3xl font-bold text-[#0D3D20] mb-1">
-          Browse Teachers
-        </h1>
-        <p className="text-[#1B5E37]/60 text-sm">
-          Find a certified Qari that matches your learning goals.
-        </p>
+        <h1 className="text-2xl font-bold text-[#0D3D20]">Book a Trial Lesson</h1>
+        <p className="text-[#1B5E37]/60 text-sm mt-1">No commitment — cancel anytime before the lesson.</p>
       </div>
 
-      {/* Search + Sort bar */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-5">
-        {/* Search */}
-        <div className="relative flex-1">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#1B5E37]/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Search by name, course, or keyword..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#D4C99A] bg-white text-sm text-[#0D3D20] placeholder-[#1B5E37]/40 focus:outline-none focus:border-[#1B5E37] transition-colors"
-          />
+      {/* Steps */}
+      <Steps current={step} />
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        {/* ── Main form ── */}
+        <div className="lg:col-span-2">
+
+          {/* ── STEP 1: Choose Course ── */}
+          {step === 1 && (
+            <div className="bg-white rounded-2xl border border-[#D4C99A] p-6">
+              <h2 className="font-bold text-[#0D3D20] text-lg mb-4">Choose a Course</h2>
+
+              {loading ? (
+                <div className="space-y-3">
+                  {[1, 2].map((i) => <Skeleton key={i} className="h-20 w-full" />)}
+                </div>
+              ) : courses.length === 0 ? (
+                <p className="text-[#1B5E37]/50 text-sm">This teacher has no active courses yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {courses.map((course) => (
+                    <button
+                      key={course.id}
+                      onClick={() => setSelectedCourse(course)}
+                      className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                        selectedCourse?.id === course.id
+                          ? 'border-[#1B5E37] bg-[#F5F0E8]'
+                          : 'border-[#D4C99A] bg-white hover:border-[#1B5E37]/40'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{COURSE_ICONS[course.course_type]}</span>
+                        <div className="flex-1">
+                          <p className="font-semibold text-[#0D3D20] text-sm">{course.title}</p>
+                          <p className="text-xs text-[#1B5E37]/60 mt-0.5">
+                            {course.level} · {course.age_group} · {course.duration_mins} min
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-[#B8952A] text-sm">Trial: ${course.trial_price_usd}</p>
+                          <p className="text-xs text-[#1B5E37]/50">then ${course.price_usd}/hr</p>
+                        </div>
+                        {selectedCourse?.id === course.id && (
+                          <div className="w-5 h-5 rounded-full bg-[#1B5E37] flex items-center justify-center flex-shrink-0">
+                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <button
+                onClick={() => setStep(2)}
+                disabled={!selectedCourse}
+                className="mt-6 w-full bg-[#1B5E37] text-white py-3 rounded-xl font-bold text-sm hover:bg-[#0D3D20] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Continue → Pick Schedule
+              </button>
+            </div>
+          )}
+
+          {/* ── STEP 2: Pick Schedule ── */}
+          {step === 2 && (
+            <div className="bg-white rounded-2xl border border-[#D4C99A] p-6 space-y-6">
+              <h2 className="font-bold text-[#0D3D20] text-lg">Pick Your Schedule</h2>
+
+              {/* Day of week */}
+              <div>
+                <label className="block text-sm font-semibold text-[#0D3D20] mb-3">
+                  Preferred Day
+                </label>
+                <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                  {DAY_ORDER.map((day) => {
+                    const available = teacher?.available_days?.includes(day) ?? true
+                    const short = day.slice(0, 3)
+                    return (
+                      <button
+                        key={day}
+                        onClick={() => available && setSelectedDay(day)}
+                        disabled={!available}
+                        className={`py-2 rounded-xl text-xs font-bold border-2 transition-all ${
+                          selectedDay === day
+                            ? 'bg-[#1B5E37] text-white border-[#1B5E37]'
+                            : available
+                            ? 'bg-white text-[#1B5E37] border-[#D4C99A] hover:border-[#1B5E37]'
+                            : 'bg-[#F5F0E8] text-[#1B5E37]/25 border-[#F5F0E8] cursor-not-allowed'
+                        }`}
+                      >
+                        {short}
+                      </button>
+                    )
+                  })}
+                </div>
+                {teacher?.available_days?.length > 0 && (
+                  <p className="text-xs text-[#1B5E37]/40 mt-2">
+                    Greyed out days are not available for this teacher.
+                  </p>
+                )}
+              </div>
+
+              {/* Time slot */}
+              <div>
+                <label className="block text-sm font-semibold text-[#0D3D20] mb-3">
+                  Preferred Time
+                  <span className="ml-2 text-xs font-normal text-[#1B5E37]/50">
+                    (your timezone: {timezone})
+                  </span>
+                </label>
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                  {TIME_SLOTS.map((time) => (
+                    <button
+                      key={time}
+                      onClick={() => setSelectedTime(time)}
+                      className={`py-2 rounded-xl text-xs font-bold border-2 transition-all ${
+                        selectedTime === time
+                          ? 'bg-[#B8952A] text-white border-[#B8952A]'
+                          : 'bg-white text-[#1B5E37] border-[#D4C99A] hover:border-[#B8952A]'
+                      }`}
+                    >
+                      {time}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Start date */}
+              <div>
+                <label className="block text-sm font-semibold text-[#0D3D20] mb-2">
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  value={startDate}
+                  min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#D4C99A] text-sm text-[#0D3D20] focus:outline-none focus:border-[#1B5E37] transition-colors"
+                />
+              </div>
+
+              {/* Recurrence */}
+              <div>
+                <label className="block text-sm font-semibold text-[#0D3D20] mb-3">
+                  Lesson Frequency
+                </label>
+                <div className="space-y-2">
+                  {RECURRENCE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setRecurrence(opt.value)}
+                      className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all ${
+                        recurrence === opt.value
+                          ? 'border-[#1B5E37] bg-[#F5F0E8]'
+                          : 'border-[#D4C99A] bg-white hover:border-[#1B5E37]/40'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-[#0D3D20]">{opt.label}</p>
+                          <p className="text-xs text-[#1B5E37]/50">{opt.desc}</p>
+                        </div>
+                        {recurrence === opt.value && (
+                          <div className="w-5 h-5 rounded-full bg-[#1B5E37] flex items-center justify-center flex-shrink-0">
+                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-sm font-semibold text-[#0D3D20] mb-2">
+                  Notes for Teacher <span className="font-normal text-[#1B5E37]/40">(optional)</span>
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="E.g. I'm a complete beginner, I want to learn Tajweed for Salah..."
+                  rows={3}
+                  className="w-full px-4 py-3 rounded-xl border border-[#D4C99A] text-sm text-[#0D3D20] placeholder-[#1B5E37]/30 focus:outline-none focus:border-[#1B5E37] transition-colors resize-none"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setStep(1)}
+                  className="flex-1 border-2 border-[#D4C99A] text-[#1B5E37] py-3 rounded-xl font-bold text-sm hover:border-[#1B5E37] transition-colors"
+                >
+                  ← Back
+                </button>
+                <button
+                  onClick={() => {
+                    if (!selectedDay || !selectedTime || !startDate) {
+                      setError('Please select a day, time, and start date.')
+                      return
+                    }
+                    setError('')
+                    setStep(3)
+                  }}
+                  className="flex-2 flex-1 bg-[#1B5E37] text-white py-3 rounded-xl font-bold text-sm hover:bg-[#0D3D20] transition-colors"
+                >
+                  Continue → Review
+                </button>
+              </div>
+              {error && <p className="text-red-500 text-xs text-center">{error}</p>}
+            </div>
+          )}
+
+          {/* ── STEP 3: Confirm ── */}
+          {step === 3 && (
+            <div className="bg-white rounded-2xl border border-[#D4C99A] p-6 space-y-5">
+              <h2 className="font-bold text-[#0D3D20] text-lg">Review & Confirm</h2>
+
+              {/* Summary */}
+              <div className="bg-[#F5F0E8] rounded-xl border border-[#D4C99A] p-4 space-y-3">
+                {[
+                  { label: 'Teacher',     value: `${teacher?.first_name} ${teacher?.last_name}` },
+                  { label: 'Course',      value: selectedCourse?.title ?? '' },
+                  { label: 'Day',         value: selectedDay },
+                  { label: 'Time',        value: `${selectedTime} (${timezone})` },
+                  { label: 'Start Date',  value: startDate ? new Date(startDate).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '' },
+                  { label: 'Frequency',   value: RECURRENCE_OPTIONS.find(r => r.value === recurrence)?.label ?? '' },
+                  { label: 'Duration',    value: `${selectedCourse?.duration_mins} minutes` },
+                ].map((row) => (
+                  <div key={row.label} className="flex justify-between text-sm">
+                    <span className="text-[#1B5E37]/60">{row.label}</span>
+                    <span className="font-semibold text-[#0D3D20] text-right max-w-[60%]">{row.value}</span>
+                  </div>
+                ))}
+
+                {notes && (
+                  <div className="pt-2 border-t border-[#D4C99A]">
+                    <p className="text-xs text-[#1B5E37]/60 mb-1">Your notes</p>
+                    <p className="text-xs text-[#0D3D20]">{notes}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Price */}
+              <div className="bg-gradient-to-br from-[#1B5E37] to-[#0D3D20] rounded-xl p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-white/60 text-xs">Trial lesson price</p>
+                  <p className="text-white text-3xl font-extrabold">${selectedCourse?.trial_price_usd}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-white/60 text-xs">Then ${selectedCourse?.price_usd}/hr</p>
+                  <p className="text-white/40 text-[10px] mt-1">Cancel before lesson for full refund</p>
+                </div>
+              </div>
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+                  <p className="text-red-600 text-xs text-center">{error}</p>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setStep(2)}
+                  className="flex-1 border-2 border-[#D4C99A] text-[#1B5E37] py-3 rounded-xl font-bold text-sm hover:border-[#1B5E37] transition-colors"
+                >
+                  ← Back
+                </button>
+                <button
+                  onClick={handleConfirm}
+                  disabled={submitting}
+                  className="flex-1 bg-[#B8952A] text-white py-3 rounded-xl font-bold text-sm hover:bg-[#9A7B22] transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {submitting ? (
+                    <>
+                      <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                      </svg>
+                      Sending...
+                    </>
+                  ) : (
+                    'Confirm Booking →'
+                  )}
+                </button>
+              </div>
+
+              <p className="text-[10px] text-[#1B5E37]/40 text-center">
+                By confirming, you agree to our booking terms. Payment is collected before the lesson.
+              </p>
+            </div>
+          )}
         </div>
 
-        {/* Sort */}
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as any)}
-          className="px-4 py-2.5 rounded-xl border border-[#D4C99A] bg-white text-sm text-[#0D3D20] focus:outline-none focus:border-[#1B5E37] transition-colors"
-        >
-          <option value="rating">Sort: Top Rated</option>
-          <option value="price_asc">Sort: Price Low → High</option>
-          <option value="price_desc">Sort: Price High → Low</option>
-          <option value="lessons">Sort: Most Lessons</option>
-        </select>
-      </div>
+        {/* ── Sidebar: Teacher card ── */}
+        <div className="space-y-4">
+          <div className="bg-white rounded-2xl border border-[#D4C99A] p-5">
+            <p className="text-xs font-semibold text-[#1B5E37]/50 uppercase tracking-wider mb-3">Your Teacher</p>
+            {loading ? (
+              <Skeleton className="h-20 w-full" />
+            ) : teacher && (
+              <>
+                <div className="flex items-center gap-3 mb-4">
+                  {teacher.avatar_url ? (
+                    <img src={teacher.avatar_url} alt={teacher.first_name} className="w-12 h-12 rounded-xl object-cover" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-xl bg-[#1B5E37] flex items-center justify-center text-white font-bold">
+                      {getInitials(teacher.first_name, teacher.last_name)}
+                    </div>
+                  )}
+                  <div>
+                    <p className="font-bold text-[#0D3D20]">{teacher.first_name} {teacher.last_name}</p>
+                    <p className="text-xs text-[#1B5E37]/60">{teacher.country ?? 'International'}</p>
+                    {teacher.avg_rating && (
+                      <p className="text-xs text-[#B8952A] font-semibold">⭐ {teacher.avg_rating.toFixed(1)}</p>
+                    )}
+                  </div>
+                </div>
 
-      {/* Course filter pills */}
-      <div className="flex gap-2 flex-wrap mb-5">
-        {ALL_FILTERS.map((f) => (
-          <button
-            key={f.value}
-            onClick={() => setActiveFilter(f.value)}
-            className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-              activeFilter === f.value
-                ? 'bg-[#1B5E37] text-white border-[#1B5E37]'
-                : 'bg-white text-[#1B5E37] border-[#D4C99A] hover:border-[#1B5E37]'
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Price filter */}
-      <div className="flex items-center gap-4 mb-6 bg-white rounded-xl border border-[#D4C99A] px-4 py-3">
-        <span className="text-xs font-semibold text-[#0D3D20] whitespace-nowrap">Max Price:</span>
-        <input
-          type="range"
-          min={5}
-          max={200}
-          step={5}
-          value={maxPrice}
-          onChange={(e) => setMaxPrice(Number(e.target.value))}
-          className="flex-1 accent-[#1B5E37]"
-        />
-        <span className="text-sm font-bold text-[#B8952A] w-16 text-right">${maxPrice}/hr</span>
-      </div>
-
-      {/* Results count */}
-      {!loading && (
-        <p className="text-xs text-[#1B5E37]/50 mb-4">
-          {filtered.length === 0
-            ? 'No teachers found'
-            : `${filtered.length} teacher${filtered.length !== 1 ? 's' : ''} found`}
-        </p>
-      )}
-
-      {/* Teachers grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-        {loading ? (
-          [1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="bg-white rounded-2xl border border-[#D4C99A] overflow-hidden">
-              <Skeleton className="h-32 rounded-none" />
-              <div className="p-4 space-y-3">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-3 w-1/2" />
-                <Skeleton className="h-8 w-full" />
-              </div>
-            </div>
-          ))
-        ) : filtered.length === 0 ? (
-          <div className="col-span-full bg-white rounded-2xl border border-[#D4C99A] p-12 text-center">
-            <div className="text-5xl mb-3">🔍</div>
-            <p className="text-[#0D3D20] font-semibold mb-1">No teachers found</p>
-            <p className="text-[#1B5E37]/60 text-sm mb-4">Try adjusting your filters or search term.</p>
-            <button
-              onClick={() => { setActiveFilter('all'); setSearch(''); setMaxPrice(200) }}
-              className="bg-[#1B5E37] text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-[#0D3D20] transition-colors"
-            >
-              Clear all filters
-            </button>
+                {selectedCourse && (
+                  <div className="bg-[#F5F0E8] rounded-xl p-3 border border-[#D4C99A]">
+                    <p className="text-xs text-[#1B5E37]/60 mb-1">Selected Course</p>
+                    <p className="text-sm font-bold text-[#0D3D20]">
+                      {COURSE_ICONS[selectedCourse.course_type]} {selectedCourse.title}
+                    </p>
+                    <p className="text-xs text-[#B8952A] font-bold mt-1">
+                      Trial: ${selectedCourse.trial_price_usd}
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
           </div>
-        ) : (
-          filtered.map((teacher) => (
-            <TeacherCard key={teacher.id} teacher={teacher} />
-          ))
-        )}
+
+          {/* Trust signals */}
+          <div className="bg-[#F5F0E8] rounded-2xl border border-[#D4C99A] p-4 space-y-3">
+            {[
+              { icon: '🔒', text: 'Safe & secure booking' },
+              { icon: '↩️', text: 'Free cancellation before lesson' },
+              { icon: '✅', text: 'Verified certified teacher' },
+              { icon: '💬', text: 'Direct chat after booking' },
+            ].map((item) => (
+              <div key={item.text} className="flex items-center gap-2.5">
+                <span className="text-base">{item.icon}</span>
+                <span className="text-xs text-[#1B5E37]/70 font-medium">{item.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )
