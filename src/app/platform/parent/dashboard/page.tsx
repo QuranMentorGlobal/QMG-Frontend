@@ -1,4 +1,5 @@
 'use client'
+import DashboardBanner from '@/components/platform/DashboardBanner'
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -211,6 +212,9 @@ export default function ParentDashboard() {
           }
           <p className="text-[#666] mt-1 text-sm">Here's an overview of your children's Quran learning journey.</p>
         </div>
+
+        {/* Banner */}
+        <DashboardBanner role="parent" />
 
         {/* Stats row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
