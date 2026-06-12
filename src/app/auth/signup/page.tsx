@@ -28,61 +28,62 @@ export default function SignupPage() {
   }
 
   async function handleSignup() {
-  if (!firstName || !lastName || !email || !password || !country) {
-    setError('Please fill in all required fields.'); return
-  }
-  if (!agreed) { setError('Please agree to the Terms of Service.'); return }
-  if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
-
-  const validRole = role === 'teacher' ? 'teacher' : 'student'
-  setError('')
-  setLoading(true)
-
-  const supabase = createClient()
-
-  // Step 1 — Create auth user
-  const { data, error: authError } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: { first_name: firstName, last_name: lastName, role: validRole }
+    if (!firstName || !lastName || !email || !password || !country) {
+      setError('Please fill in all required fields.'); return
     }
-  })
+    if (!agreed) { setError('Please agree to the Terms of Service.'); return }
+    if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
 
-  if (authError) { setError(authError.message); setLoading(false); return }
-  if (!data.user) { setError('Signup failed. Please try again.'); setLoading(false); return }
+    // Map role to valid DB enum value
+    const validRole = role === 'teacher' ? 'teacher' : role === 'parent' ? 'parent' : 'student'
+    setError('')
+    setLoading(true)
 
-  // Step 2 — Upsert profile (ignore errors, trigger may have already created it)
-  await (supabase.from('profiles') as any).upsert({
-    id: data.user.id,
-    first_name: firstName,
-    last_name: lastName,
-    email: email,
-    role: validRole,
-    country: country,
-    is_active: true,
-  }).select()
+    const supabase = createClient()
 
-  // Step 3 — If teacher, create teacher_profiles row
-  if (validRole === 'teacher') {
-    await (supabase.from('teacher_profiles') as any).upsert({
-      user_id: data.user.id,
-      status: 'not_submitted',
-      years_experience: 0,
-      specializations: [],
-      teaching_languages: [],
-      available_days: [],
-      hourly_rate_usd: 0,
-      trial_rate_usd: 0,
-      ijazah_verified: false,
+    // Step 1 — Create auth user
+    const { data, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { first_name: firstName, last_name: lastName, role: validRole }
+      }
+    })
+
+    if (authError) { setError(authError.message); setLoading(false); return }
+    if (!data.user) { setError('Signup failed. Please try again.'); setLoading(false); return }
+
+    // Step 2 — Upsert profile
+    await (supabase.from('profiles') as any).upsert({
+      id: data.user.id,
+      first_name: firstName,
+      last_name: lastName,
+      email: email,
+      role: validRole,
+      country: country,
+      is_active: true,
     }).select()
-  }
 
-  // Always proceed to success regardless of upsert results
-  // The trigger will have created the profile anyway
-  setSuccess(true)
-  setLoading(false)
-}
+    // Step 3 — Role-specific rows
+    if (validRole === 'teacher') {
+      await (supabase.from('teacher_profiles') as any).upsert({
+        user_id: data.user.id,
+        status: 'not_submitted',
+        years_experience: 0,
+        specializations: [],
+        teaching_languages: [],
+        available_days: [],
+        hourly_rate_usd: 0,
+        trial_rate_usd: 0,
+        ijazah_verified: false,
+      }).select()
+    }
+
+    // No extra row needed for parent — they link children via parent_children table later
+
+    setSuccess(true)
+    setLoading(false)
+  }
 
   async function handleGoogleSignup() {
     setLoading(true)
@@ -100,26 +101,38 @@ export default function SignupPage() {
   const strength = pwStrength(password)
   const strengthColors = ['', '#f87171', '#fbbf24', '#4ade80', '#22c55e']
 
+  // ── Success screen ───────────────────────────────────────────────────────────
+
   if (success) {
+    const successConfig = {
+      teacher: {
+        icon: '🎓',
+        title: 'Welcome, Teacher!',
+        body: `Account created! Sign in and complete your verification to go live on the platform.`,
+      },
+      parent: {
+        icon: '👨‍👩‍👧',
+        title: 'Parent Account Created!',
+        body: `Welcome! Sign in to your parent dashboard to link your children's accounts and monitor their Quran learning journey.`,
+      },
+      student: {
+        icon: '📧',
+        title: 'Check Your Email!',
+        body: `We sent a confirmation link to ${email}. Click it to activate your account, then sign in.`,
+      },
+    }
+    const cfg = successConfig[role as keyof typeof successConfig] ?? successConfig.student
+
     return (
       <>
-        <style>{`
-          *{box-sizing:border-box;margin:0;padding:0}
-        `}</style>
+        <style>{`*{box-sizing:border-box;margin:0;padding:0}`}</style>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#0D3D20' }}>
           <div style={{ background: '#fff', borderRadius: 20, padding: 48, textAlign: 'center', maxWidth: 420, margin: 20 }}>
-            <div style={{ fontSize: 56, marginBottom: 20 }}>
-              {role === 'teacher' ? '🎓' : '📧'}
-            </div>
+            <div style={{ fontSize: 56, marginBottom: 20 }}>{cfg.icon}</div>
             <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 28, fontWeight: 800, color: '#0D3D20', marginBottom: 12 }}>
-              {role === 'teacher' ? 'Welcome, Teacher!' : 'Check Your Email!'}
+              {cfg.title}
             </h2>
-            <p style={{ fontSize: 15, color: '#6B6B6B', lineHeight: 1.7, marginBottom: 28 }}>
-              {role === 'teacher'
-                ? `Account created! Sign in and complete your verification to go live on the platform.`
-                : `We sent a confirmation link to ${email}. Click it to activate your account, then sign in.`
-              }
-            </p>
+            <p style={{ fontSize: 15, color: '#6B6B6B', lineHeight: 1.7, marginBottom: 28 }}>{cfg.body}</p>
             <a href="/auth/login"
               style={{ display: 'inline-block', padding: '14px 32px', background: 'linear-gradient(135deg,#1B5E37,#2A7A4A)', color: '#fff', borderRadius: 12, fontWeight: 700, textDecoration: 'none' }}>
               Go to Sign In →
@@ -129,6 +142,8 @@ export default function SignupPage() {
       </>
     )
   }
+
+  // ── Main render ──────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -161,20 +176,30 @@ export default function SignupPage() {
         .hadith{margin-top:48px;padding-top:28px;border-top:1px solid rgba(255,255,255,.08)}
         .hadith p{font-family:'Amiri',serif;font-size:15px;color:var(--gold-light);direction:rtl;margin-bottom:6px}
         .hadith small{font-size:12px;color:rgba(255,255,255,.3)}
-        .auth-right{width:540px;flex-shrink:0;background:#fff;display:flex;align-items:flex-start;justify-content:center;padding:50px 52px;min-height:100vh;overflow-y:auto}
-        .form-wrap{width:100%;max-width:400px;padding-top:16px}
+        .auth-right{width:560px;flex-shrink:0;background:#fff;display:flex;align-items:flex-start;justify-content:center;padding:50px 52px;min-height:100vh;overflow-y:auto}
+        .form-wrap{width:100%;max-width:420px;padding-top:16px}
         .form-wrap h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:800;color:var(--green-dark);margin-bottom:6px}
         .form-wrap .sub{font-size:15px;color:var(--tl);margin-bottom:24px}
         .form-wrap .sub a{color:var(--green);font-weight:700;text-decoration:none}
         .role-lbl{font-size:13px;font-weight:700;color:var(--tm);margin-bottom:10px}
-        .role-select{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px}
-        .role-opt{border:2px solid var(--cream-d);border-radius:12px;padding:18px 10px;cursor:pointer;transition:all .2s;text-align:center;background:#fff}
+
+        /* 3-column role grid */
+        .role-select{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:24px}
+        .role-opt{border:2px solid var(--cream-d);border-radius:12px;padding:16px 8px;cursor:pointer;transition:all .2s;text-align:center;background:#fff;position:relative}
         .role-opt:hover{border-color:var(--green-mid);background:var(--cream)}
         .role-opt.selected{border-color:var(--green);background:rgba(27,94,55,.06)}
-        .role-opt .rico{font-size:28px;margin-bottom:6px}
-        .role-opt .rlbl{font-size:14px;font-weight:700;color:var(--tm)}
-        .role-opt .rsub{font-size:11px;color:var(--tl);margin-top:3px}
+        .role-opt.selected::after{content:'✓';position:absolute;top:6px;right:8px;font-size:10px;color:var(--green);font-weight:700}
+        .role-opt .rico{font-size:26px;margin-bottom:6px}
+        .role-opt .rlbl{font-size:13px;font-weight:700;color:var(--tm);line-height:1.2}
+        .role-opt .rsub{font-size:10px;color:var(--tl);margin-top:3px;line-height:1.3}
         .role-opt.selected .rlbl{color:var(--green-dark)}
+
+        /* Parent info banner — shown only when parent is selected */
+        .parent-info{background:linear-gradient(135deg,rgba(184,149,42,.08),rgba(27,94,55,.06));border:1px solid rgba(184,149,42,.25);border-radius:12px;padding:14px 16px;margin-bottom:20px;display:flex;gap:12px;align-items:flex-start}
+        .parent-info .pi-ico{font-size:20px;flex-shrink:0;margin-top:1px}
+        .parent-info p{font-size:12px;color:#555;line-height:1.6}
+        .parent-info strong{color:var(--green-dark)}
+
         .social-btn{display:flex;align-items:center;justify-content:center;gap:10px;padding:13px 20px;border-radius:12px;border:1.5px solid var(--cream-d);background:#fff;font-size:15px;font-weight:500;color:var(--td);cursor:pointer;transition:all .25s;font-family:'DM Sans',sans-serif;width:100%;margin-bottom:20px}
         .social-btn:hover{border-color:var(--green-mid);background:var(--cream);transform:translateY(-2px)}
         .divider{display:flex;align-items:center;gap:14px;margin-bottom:20px}
@@ -199,14 +224,15 @@ export default function SignupPage() {
         .auth-switch{text-align:center;font-size:14px;color:var(--tl)}
         .auth-switch a{color:var(--green);font-weight:700;text-decoration:none}
         .error-box{background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:10px;padding:12px 16px;font-size:13px;margin-bottom:16px}
-        @media(max-width:920px){.auth-left{display:none}.auth-right{width:100%;padding:40px 24px}}
-        @media(max-width:500px){.fg-row{grid-template-columns:1fr}}
+        @media(max-width:960px){.auth-left{display:none}.auth-right{width:100%;padding:40px 24px}}
+        @media(max-width:500px){.fg-row{grid-template-columns:1fr}.role-select{grid-template-columns:1fr 1fr 1fr;gap:8px}.role-opt{padding:12px 6px}.role-opt .rico{font-size:22px}.role-opt .rlbl{font-size:11px}}
       `}</style>
 
       <div className="auth-wrap">
+        {/* ── Left panel ── */}
         <div className="auth-left">
-          <div className="orb o1"></div>
-          <div className="orb o2"></div>
+          <div className="orb o1" />
+          <div className="orb o2" />
           <div className="left-inner">
             <a href="https://quranmentorglobal.com" className="auth-logo">
               <div className="logo-mark">
@@ -225,7 +251,7 @@ export default function SignupPage() {
               {[
                 { n: '1', t: 'Create your account', s: 'Takes less than 2 minutes' },
                 { n: '2', t: 'Browse & book a teacher', s: 'Free trial lesson available' },
-                { n: '3', t: 'Start learning Quran', s: 'Flexible schedule, any device' }
+                { n: '3', t: 'Start learning Quran', s: 'Flexible schedule, any device' },
               ].map(s => (
                 <div className="sm" key={s.n}>
                   <div className="sm-n">{s.n}</div>
@@ -240,22 +266,25 @@ export default function SignupPage() {
           </div>
         </div>
 
+        {/* ── Right panel ── */}
         <div className="auth-right">
           <div className="form-wrap">
             <h2>Create Account</h2>
             <p className="sub">Already have an account? <a href="/auth/login">Sign in →</a></p>
 
-            {/* ── Role selector — ONLY Student & Teacher ── */}
+            {/* Role selector — 3 columns */}
             <div className="role-lbl">I am joining as</div>
             <div className="role-select">
               {[
                 { r: 'student', ico: '🎓', lbl: 'Student', sub: 'I want to learn' },
                 { r: 'teacher', ico: '📖', lbl: 'Teacher', sub: 'I want to teach' },
+                { r: 'parent',  ico: '👨‍👩‍👧', lbl: 'Parent',  sub: 'My child learns' },
               ].map(o => (
                 <div
                   key={o.r}
                   className={`role-opt${role === o.r ? ' selected' : ''}`}
-                  onClick={() => setRole(o.r)}>
+                  onClick={() => setRole(o.r)}
+                >
                   <div className="rico">{o.ico}</div>
                   <div className="rlbl">{o.lbl}</div>
                   <div className="rsub">{o.sub}</div>
@@ -263,6 +292,19 @@ export default function SignupPage() {
               ))}
             </div>
 
+            {/* Parent info banner — only visible when parent is selected */}
+            {role === 'parent' && (
+              <div className="parent-info">
+                <div className="pi-ico">ℹ️</div>
+                <p>
+                  <strong>For parents monitoring their child's lessons.</strong><br />
+                  After signing up, link your child's existing student account from your parent dashboard.
+                  Your child needs their own student account to book and attend lessons.
+                </p>
+              </div>
+            )}
+
+            {/* Google button */}
             <button className="social-btn" onClick={handleGoogleSignup} disabled={loading}>
               <svg width="20" height="20" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -306,7 +348,7 @@ export default function SignupPage() {
               </div>
               <div className="pw-strength">
                 {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="ps" style={{ background: strength >= i ? strengthColors[strength] : '' }}></div>
+                  <div key={i} className="ps" style={{ background: strength >= i ? strengthColors[strength] : '' }} />
                 ))}
               </div>
             </div>
@@ -327,11 +369,19 @@ export default function SignupPage() {
                 I agree to the <a href="https://quranmentorglobal.com/about.html">Terms of Service</a> and{' '}
                 <a href="https://quranmentorglobal.com/about.html">Privacy Policy</a>.
                 {role === 'teacher' && ' Teachers must complete verification before going live.'}
+                {role === 'parent' && ' Parents can monitor and manage their children\'s accounts.'}
               </label>
             </div>
 
             <button className="submit-btn" onClick={handleSignup} disabled={loading}>
-              {loading ? 'Creating account...' : role === 'teacher' ? 'Create Teacher Account →' : 'Create Student Account →'}
+              {loading
+                ? 'Creating account...'
+                : role === 'teacher'
+                  ? 'Create Teacher Account →'
+                  : role === 'parent'
+                    ? 'Create Parent Account →'
+                    : 'Create Student Account →'
+              }
             </button>
 
             <div className="auth-switch">
