@@ -380,10 +380,10 @@ export default function LandingPage() {
           </Link>
           <ul className="nav-links">
             <li><Link href="/" className="active">Home</Link></li>
-            <li><a href="#about">About</a></li>
-            <li><a href="#courses">Courses</a></li>
-            <li><a href="#teachers">Teachers</a></li>
-            <li><a href="#contact">Contact</a></li>
+            <li><Link href="/about">About</Link></li>
+            <li><Link href="/courses">Courses</Link></li>
+            <li><Link href="/teachers">Teachers</Link></li>
+            <li><Link href="/contact">Contact</Link></li>
           </ul>
           <div className="nav-cta">
             <Link href="/auth/login" className="btn btn-outline-green btn-sm">Login</Link>
@@ -395,10 +395,10 @@ export default function LandingPage() {
         </div>
         <div className="mob-menu" id="mobMenu">
           <Link href="/" onClick={() => (window as any).closeMenu?.()}>Home</Link>
-          <a href="#about" onClick={() => (window as any).closeMenu?.()}>About</a>
-          <a href="#courses" onClick={() => (window as any).closeMenu?.()}>Courses</a>
-          <a href="#teachers" onClick={() => (window as any).closeMenu?.()}>Teachers</a>
-          <a href="#contact" onClick={() => (window as any).closeMenu?.()}>Contact</a>
+          <Link href="/about" onClick={() => (window as any).closeMenu?.()}>About</Link>
+          <Link href="/courses" onClick={() => (window as any).closeMenu?.()}>Courses</Link>
+          <Link href="/teachers" onClick={() => (window as any).closeMenu?.()}>Teachers</Link>
+          <Link href="/contact" onClick={() => (window as any).closeMenu?.()}>Contact</Link>
           <div className="mob-divider"></div>
           <Link href="/auth/login" onClick={() => (window as any).closeMenu?.()}>Login</Link>
           <Link href="/auth/signup" className="btn btn-green" style={{textAlign:'center',justifyContent:'center',marginTop:4}} onClick={() => (window as any).closeMenu?.()}>Sign Up Free →</Link>
