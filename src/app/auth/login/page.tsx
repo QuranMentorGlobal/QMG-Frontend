@@ -21,9 +21,20 @@ export default function LoginPage() {
     const supabase = createClient()
     const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
     if (authError) { setError(authError.message); setLoading(false); return }
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).single() as any
-    if (profile && profile.role === 'teacher') {
+
+    // Read actual role from DB — don't trust the tab selection
+    const { data: profile } = await (supabase as any)
+      .from('profiles')
+      .select('role')
+      .eq('id', data.user.id)
+      .single()
+
+    const actualRole = profile?.role ?? 'student'
+
+    if (actualRole === 'teacher') {
       router.push('/platform/teacher/dashboard')
+    } else if (actualRole === 'parent') {
+      router.push('/platform/parent/dashboard')
     } else {
       router.push('/platform/student/dashboard')
     }
@@ -39,11 +50,14 @@ export default function LoginPage() {
         redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/callback`,
       }
     })
-    if (error) {
-      setError(error.message)
-      setLoading(false)
-    }
+    if (error) { setError(error.message); setLoading(false) }
   }
+
+  const tabs = [
+    { r: 'student', label: '🎓 Student' },
+    { r: 'teacher', label: '📖 Teacher' },
+    { r: 'parent',  label: '👨‍👩‍👧 Parent'  },
+  ]
 
   return (
     <>
@@ -77,10 +91,10 @@ export default function LoginPage() {
         .auth-right{width:520px;flex-shrink:0;background:#fff;display:flex;align-items:center;justify-content:center;padding:60px 56px;min-height:100vh;overflow-y:auto}
         .form-wrap{width:100%;max-width:380px}
         .form-wrap h2{font-family:'Playfair Display',serif;font-size:30px;font-weight:800;color:var(--green-dark);margin-bottom:6px}
-        .form-wrap .sub{font-size:15px;color:var(--tl);margin-bottom:36px}
+        .form-wrap .sub{font-size:15px;color:var(--tl);margin-bottom:28px}
         .form-wrap .sub a{color:var(--green);font-weight:700;text-decoration:none}
-        .role-tabs{display:flex;gap:6px;margin-bottom:28px;background:var(--cream);border-radius:12px;padding:4px}
-        .rtab{flex:1;padding:10px;text-align:center;font-size:14px;font-weight:600;border-radius:8px;cursor:pointer;transition:all .2s;color:var(--tl);border:none;background:transparent;font-family:'DM Sans',sans-serif}
+        .role-tabs{display:flex;gap:4px;margin-bottom:28px;background:var(--cream);border-radius:12px;padding:4px}
+        .rtab{flex:1;padding:9px 6px;text-align:center;font-size:13px;font-weight:600;border-radius:8px;cursor:pointer;transition:all .2s;color:var(--tl);border:none;background:transparent;font-family:'DM Sans',sans-serif;white-space:nowrap}
         .rtab.active{background:#fff;color:var(--green-dark);box-shadow:0 2px 8px rgba(0,0,0,.08)}
         .social-btn{display:flex;align-items:center;justify-content:center;gap:10px;padding:13px 20px;border-radius:12px;border:1.5px solid var(--cream-d);background:#fff;font-size:15px;font-weight:500;color:var(--td);cursor:pointer;transition:all .25s;font-family:'DM Sans',sans-serif;width:100%;margin-bottom:28px}
         .social-btn:hover{border-color:var(--green-mid);background:var(--cream);transform:translateY(-2px)}
@@ -103,18 +117,21 @@ export default function LoginPage() {
         .auth-switch{text-align:center;font-size:14px;color:var(--tl)}
         .auth-switch a{color:var(--green);font-weight:700;text-decoration:none}
         .error-box{background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:10px;padding:12px 16px;font-size:13px;margin-bottom:18px}
+        .parent-hint{background:linear-gradient(135deg,rgba(184,149,42,.08),rgba(27,94,55,.05));border:1px solid rgba(184,149,42,.2);border-radius:10px;padding:12px 14px;font-size:12px;color:#555;margin-bottom:20px;line-height:1.6}
+        .parent-hint strong{color:var(--green-dark)}
         @media(max-width:920px){.auth-left{display:none}.auth-right{width:100%;padding:40px 24px}}
       `}</style>
 
       <div className="auth-wrap">
+        {/* ── Left panel ── */}
         <div className="auth-left">
-          <div className="orb o1"></div>
-          <div className="orb o2"></div>
+          <div className="orb o1" />
+          <div className="orb o2" />
           <div className="left-inner">
             <a href="https://quranmentorglobal.com" className="auth-logo">
               <div className="logo-mark">
-                <svg viewBox="0 0 24 24" style={{width:22,height:22,fill:'#D4AF50'}}>
-                  <path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zM21 18.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v11.5z"/>
+                <svg viewBox="0 0 24 24" style={{ width: 22, height: 22, fill: '#D4AF50' }}>
+                  <path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zM21 18.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v11.5z" />
                 </svg>
               </div>
               <div className="logo-txt">
@@ -122,11 +139,19 @@ export default function LoginPage() {
                 <div className="tag">Learn · Connect · Grow</div>
               </div>
             </a>
-            <h1>Welcome<br/>Back to Your<br/><span>Quran Journey</span></h1>
+            <h1>Welcome<br />Back to Your<br /><span>Quran Journey</span></h1>
             <p>Sign in to continue your lessons, connect with your teacher, and track your progress.</p>
             <div className="af-list">
-              {[{ico:'🎓',t:'Certified Hafiz & Tajweed teachers'},{ico:'📅',t:'Flexible scheduling, any timezone'},{ico:'🌍',t:'Students in 25+ countries'},{ico:'⭐',t:'4.9★ average teacher rating'}].map(f=>(
-                <div className="af" key={f.t}><div className="af-ico">{f.ico}</div><span>{f.t}</span></div>
+              {[
+                { ico: '🎓', t: 'Certified Hafiz & Tajweed teachers' },
+                { ico: '📅', t: 'Flexible scheduling, any timezone' },
+                { ico: '🌍', t: 'Students in 25+ countries' },
+                { ico: '⭐', t: '4.9★ average teacher rating' },
+              ].map(f => (
+                <div className="af" key={f.t}>
+                  <div className="af-ico">{f.ico}</div>
+                  <span>{f.t}</span>
+                </div>
               ))}
             </div>
             <div className="hadith">
@@ -136,25 +161,38 @@ export default function LoginPage() {
           </div>
         </div>
 
+        {/* ── Right panel ── */}
         <div className="auth-right">
           <div className="form-wrap">
             <h2>Sign In</h2>
             <p className="sub">New to QMG? <a href="/auth/signup">Create a free account →</a></p>
 
+            {/* 3-tab role selector */}
             <div className="role-tabs">
-              {['student','teacher'].map(r=>(
-                <button key={r} className={`rtab${role===r?' active':''}`} onClick={()=>setRole(r)}>
-                  {r==='student'?'👤 Student':'🎓 Teacher'}
+              {tabs.map(t => (
+                <button
+                  key={t.r}
+                  className={`rtab${role === t.r ? ' active' : ''}`}
+                  onClick={() => setRole(t.r)}
+                >
+                  {t.label}
                 </button>
               ))}
             </div>
 
+            {/* Parent hint — only shown when parent tab active */}
+            {role === 'parent' && (
+              <div className="parent-hint">
+                <strong>Signing in as a Parent.</strong> You'll be taken to your parent dashboard where you can monitor your children's lessons and payments.
+              </div>
+            )}
+
             <button className="social-btn" onClick={handleGoogleLogin} disabled={loading}>
               <svg width="20" height="20" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
               </svg>
               Continue with Google
             </button>
@@ -165,22 +203,41 @@ export default function LoginPage() {
 
             <div className="fg">
               <label>Email Address</label>
-              <input type="email" placeholder="ahmed@example.com" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleLogin()} />
+              <input
+                type="email"
+                placeholder="ahmed@example.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleLogin()}
+              />
             </div>
 
             <div className="fg">
               <div className="fg-label-row">
-                <label style={{margin:0}}>Password</label>
-                <a href="#" className="forgot">Forgot password?</a>
+                <label style={{ margin: 0 }}>Password</label>
+                <a href="/auth/reset-password" className="forgot">Forgot password?</a>
               </div>
               <div className="pw-wrap">
-                <input type={showPw?'text':'password'} placeholder="Enter your password" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleLogin()} />
-                <button className="pw-toggle" onClick={()=>setShowPw(!showPw)} type="button">👁</button>
+                <input
+                  type={showPw ? 'text' : 'password'}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleLogin()}
+                />
+                <button className="pw-toggle" onClick={() => setShowPw(!showPw)} type="button">👁</button>
               </div>
             </div>
 
             <button className="submit-btn" onClick={handleLogin} disabled={loading}>
-              {loading?'Signing in...':'Sign In →'}
+              {loading
+                ? 'Signing in...'
+                : role === 'teacher'
+                  ? 'Sign In as Teacher →'
+                  : role === 'parent'
+                    ? 'Sign In as Parent →'
+                    : 'Sign In as Student →'
+              }
             </button>
 
             <div className="auth-switch">
