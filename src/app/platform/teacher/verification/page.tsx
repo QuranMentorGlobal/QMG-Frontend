@@ -163,7 +163,16 @@ export default function VerificationPage() {
     if (!validateStep(4)) return
     setSubmitting(true)
 
-    await (supabase.from('profiles') as any).update({
+    // Always get a fresh session at submit time
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      showToast('Session expired. Please log in again.')
+      setSubmitting(false)
+      return
+    }
+
+    // Update profiles table
+    const { error: profileError } = await supabase.from('profiles').update({
       first_name: firstName,
       last_name: lastName,
       gender,
@@ -171,9 +180,17 @@ export default function VerificationPage() {
       phone,
       bio,
       avatar_url: photoUrl,
-    }).eq('id', userId)
+    }).eq('id', user.id)
 
-    const updateData: any = {
+    if (profileError) {
+      showToast('Error saving profile: ' + profileError.message)
+      setSubmitting(false)
+      return
+    }
+
+    // Upsert teacher_profiles by user_id — works whether row exists or not
+    const { error: tpError } = await supabase.from('teacher_profiles').upsert({
+      user_id: user.id,
       status: 'pending',
       submitted_at: new Date().toISOString(),
       years_experience: Number(yearsExp),
@@ -185,12 +202,12 @@ export default function VerificationPage() {
       trial_rate_usd: Number(trialRate) || 0,
       profile_photo_url: photoUrl,
       rejection_reason: null,
-    }
+    }, { onConflict: 'user_id' })
 
-    if (tpId) {
-      await (supabase.from('teacher_profiles') as any).update(updateData).eq('id', tpId)
-    } else {
-      await (supabase.from('teacher_profiles') as any).insert({ ...updateData, user_id: userId })
+    if (tpError) {
+      showToast('Error saving application: ' + tpError.message)
+      setSubmitting(false)
+      return
     }
 
     try {
@@ -200,7 +217,7 @@ export default function VerificationPage() {
         body: JSON.stringify({
           type: 'new_application',
           teacherName: `${firstName} ${lastName}`,
-          teacherEmail: userEmail,
+          teacherEmail: user.email,
           specializations,
         }),
       })
