@@ -84,11 +84,12 @@ export default function ParentDashboard() {
       if (!user) { window.location.href = '/auth/login'; return }
 
       // Parent profile
-      const { data: profile } = await supabase
+      const { data: _pd } = await (supabase as any)
         .from('profiles')
         .select('first_name, last_name, role')
         .eq('id', user.id)
         .single()
+      const profile = _pd as { role: string; first_name: string | null; last_name: string | null } | null
 
       if (profile?.role !== 'parent') {
         window.location.href = '/auth/login'
