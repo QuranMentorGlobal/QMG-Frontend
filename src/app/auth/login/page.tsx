@@ -31,13 +31,13 @@ export default function LoginPage() {
   async function handleGoogleLogin() {
   setLoading(true)
   setError('')
-  const supabase = createClient()
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: `${window.location.origin}/auth/callback`,
-    }
-  })
+  const  = createClient()
+ const { error } = await supabase.auth.signInWithOAuth({
+  provider: 'google',
+  options: {
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/callback`,
+  }
+})
   if (error) {
     setError(error.message)
     setLoading(false)
