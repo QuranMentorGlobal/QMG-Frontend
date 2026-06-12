@@ -13,9 +13,7 @@ export async function GET(request: Request) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
+          getAll() { return cookieStore.getAll() },
           setAll(cookiesToSet) {
             try {
               cookiesToSet.forEach(({ name, value, options }) =>
@@ -33,14 +31,19 @@ export async function GET(request: Request) {
       const { data: { user } } = await supabase.auth.getUser()
 
       if (user) {
-        const { data } = await supabase
+        const { data } = await (supabase as any)
           .from('profiles')
           .select('role')
           .eq('id', user.id)
-          .single() as { data: { role: string } | null; error: unknown }
+          .single() as { data: { role: string } | null }
 
-        if (data?.role === 'teacher') {
+        const role = data?.role ?? 'student'
+
+        if (role === 'teacher') {
           return NextResponse.redirect(`${origin}/platform/teacher/dashboard`)
+        }
+        if (role === 'parent') {
+          return NextResponse.redirect(`${origin}/platform/parent/dashboard`)
         }
         return NextResponse.redirect(`${origin}/platform/student/dashboard`)
       }
