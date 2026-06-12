@@ -6,8 +6,12 @@ import { useRouter } from 'next/navigation'
 import type { CourseType } from '@/types/database'
 
 const COURSE_ICONS: Record<CourseType, string> = {
-  noorani_qaida: '🔤', tajweed: '🎵', hifz: '📖',
-  tafseer: '🌙', islamic_studies: '☪️', ijazah: '🏅',
+  'Noorani Qaida': '🔤',
+  'Tajweed': '🎵',
+  'Hifz': '📖',
+  'Tafseer': '🌙',
+  'Islamic Studies': '☪️',
+  'Ijazah': '🏅',
 }
 
 function statusStyle(status: string) {
@@ -44,7 +48,6 @@ export default function StudentLessons() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.replace('/auth/login'); return }
 
-      // Get booking IDs first
       const { data: bookings } = await supabase
         .from('bookings')
         .select('id')
@@ -88,13 +91,11 @@ export default function StudentLessons() {
 
   return (
     <div className="w-full">
-      {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-green-dark">My Lessons</h1>
         <p className="text-ink-light text-sm mt-1">View all your scheduled and past lessons.</p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         {[
           { label: 'Upcoming',  value: upcomingCount,  icon: '📅', color: 'bg-blue-50 border-blue-200' },
@@ -109,7 +110,6 @@ export default function StudentLessons() {
         ))}
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-2 mb-6">
         {TABS.map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)}
@@ -123,7 +123,6 @@ export default function StudentLessons() {
         ))}
       </div>
 
-      {/* Lessons list */}
       <div className="space-y-4">
         {loading ? (
           [1,2,3].map(i => <Skeleton key={i} className="h-28 w-full" />)
@@ -132,9 +131,7 @@ export default function StudentLessons() {
             <div className="text-5xl mb-3">
               {activeTab === 'upcoming' ? '📅' : activeTab === 'completed' ? '📚' : '❌'}
             </div>
-            <p className="text-green-dark font-semibold">
-              No {activeTab} lessons
-            </p>
+            <p className="text-green-dark font-semibold">No {activeTab} lessons</p>
           </div>
         ) : (
           filtered.map((l: any) => {
@@ -153,7 +150,6 @@ export default function StudentLessons() {
               }`}>
                 <div className="flex flex-col sm:flex-row gap-4">
 
-                  {/* Date block */}
                   <div className="flex-shrink-0 w-16 h-16 rounded-2xl bg-cream border border-gold/20 flex flex-col items-center justify-center">
                     <span className="text-[10px] font-bold text-ink-light uppercase">
                       {dt.toLocaleDateString('en-GB', { weekday: 'short' })}
@@ -164,7 +160,6 @@ export default function StudentLessons() {
                     </span>
                   </div>
 
-                  {/* Teacher */}
                   <div className="flex items-center gap-3 flex-1">
                     {teacher?.avatar_url ? (
                       <img src={teacher.avatar_url} alt={teacher.first_name}
@@ -190,28 +185,21 @@ export default function StudentLessons() {
                     </div>
                   </div>
 
-                  {/* Status + actions */}
                   <div className="flex flex-col items-start sm:items-end gap-2 flex-shrink-0">
                     <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold capitalize ${statusStyle(l.status)}`}>
                       {l.status}
                     </span>
-
-                    {/* Join button */}
                     {l.daily_room_url && (isToday || isLive || isSoon) && (
                       <a href={l.daily_room_url} target="_blank" rel="noopener noreferrer"
                         className="bg-green-DEFAULT text-white px-4 py-1.5 rounded-xl text-xs font-bold hover:bg-green-dark transition-colors">
                         Join Lesson →
                       </a>
                     )}
-
-                    {/* Homework */}
                     {l.homework && (
                       <div className="text-xs text-ink-light bg-cream rounded-lg px-3 py-1.5 max-w-xs">
                         📝 <span className="font-medium">Homework:</span> {l.homework}
                       </div>
                     )}
-
-                    {/* Surahs covered */}
                     {l.surahs_covered?.length > 0 && (
                       <div className="text-xs text-ink-light">
                         📖 {l.surahs_covered.join(', ')}
@@ -220,7 +208,6 @@ export default function StudentLessons() {
                   </div>
                 </div>
 
-                {/* Teacher notes */}
                 {l.teacher_notes && (
                   <div className="mt-3 pt-3 border-t border-cream-dark">
                     <p className="text-xs text-ink-light">
