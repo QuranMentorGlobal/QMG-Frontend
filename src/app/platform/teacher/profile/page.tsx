@@ -5,10 +5,10 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { CourseType } from '@/types/database'
 
-const COURSE_TYPES: CourseType[] = ['noorani_qaida', 'tajweed', 'hifz', 'tafseer', 'islamic_studies', 'ijazah']
+const COURSE_TYPES: CourseType[] = ['Noorani Qaida', 'Tajweed', 'Hifz', 'Tafseer', 'Islamic Studies', 'Ijazah']
 const COURSE_LABELS: Record<CourseType, string> = {
-  noorani_qaida: 'Noorani Qaida', tajweed: 'Tajweed', hifz: 'Hifz',
-  tafseer: 'Tafseer', islamic_studies: 'Islamic Studies', ijazah: 'Ijazah',
+  'Noorani Qaida': 'Noorani Qaida', 'Tajweed': 'Tajweed', 'Hifz': 'Hifz',
+  'Tafseer': 'Tafseer', 'Islamic Studies': 'Islamic Studies', 'Ijazah': 'Ijazah',
 }
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const COUNTRIES = ['Pakistan', 'United Kingdom', 'United States', 'UAE', 'Saudi Arabia', 'Canada', 'Australia', 'Other']
