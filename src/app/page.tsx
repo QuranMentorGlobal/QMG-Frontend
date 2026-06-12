@@ -2,6 +2,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { SocialIcons } from '@/components/landing/LandingLayout'
 import Link from 'next/link'
 import Image from 'next/image'
 
@@ -685,11 +686,7 @@ export default function LandingPage() {
                   </div>
                 ))}
               </div>
-              <div className="soc-row">
-                <a href="https://facebook.com/QuranMentorGlobal" target="_blank" rel="noopener noreferrer" className="soc">f</a>
-                <a href="https://instagram.com/QuranMentorGlobal" target="_blank" rel="noopener noreferrer" className="soc">ig</a>
-                <a href="https://youtube.com/@QuranMentorGlobal" target="_blank" rel="noopener noreferrer" className="soc">yt</a>
-              </div>
+              <SocialIcons />
             </div>
             <div>
               <div className="cform">
