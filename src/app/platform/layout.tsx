@@ -66,21 +66,28 @@ function Sidebar({
   const pathname = usePathname()
   const cfg = roleConfig[role] ?? roleConfig.student
 
+  const dashboardHrefMap: Record<UserRole, string> = {
+    student: '/platform/student/dashboard',
+    teacher: '/platform/teacher/dashboard',
+    parent:  '/platform/parent/dashboard',
+    admin:   '/platform/student/dashboard',
+  }
+  const dashboardHref = dashboardHrefMap[role] ?? '/platform/student/dashboard'
+
   return (
     <aside
-      className="hidden md:flex flex-col w-44 min-h-screen fixed top-0 left-0 z-40"
+      className="hidden md:flex flex-col w-48 min-h-screen fixed top-0 left-0 z-40"
       style={{ background: '#0D3D20', fontFamily: "'DM Sans', system-ui, sans-serif" }}
     >
-      {/* Logo + platform name — single line */}
+      {/* Logo + platform name — single line, links to role dashboard */}
       <Link
-        href="/"
+        href={dashboardHref}
         className="flex items-center gap-2 px-4 py-4 border-b"
         style={{ borderColor: 'rgba(255,255,255,0.08)', textDecoration: 'none' }}
       >
         <img src="/logo.png" alt="QMG" className="h-7 w-auto object-contain flex-shrink-0" />
         <div style={{ lineHeight: 1 }}>
-          {/* Single line: Quran + Mentor + Global */}
-          <p className="text-sm font-bold whitespace-nowrap" style={{ color: '#fff' }}>
+          <p className="text-[13px] font-bold whitespace-nowrap" style={{ color: '#fff', letterSpacing: '-0.2px' }}>
             Quran<span style={{ color: '#D4AF50' }}>Mentor</span>Global
           </p>
           <p className="text-[9px] font-semibold tracking-widest mt-0.5" style={{ color: 'rgba(212,175,80,0.7)' }}>
@@ -241,7 +248,7 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
       <Sidebar nav={nav} role={role} userName={userName} onSignOut={handleSignOut} />
       <BottomTabs nav={nav} />
       {/* w-44 = 176px sidebar */}
-      <main className="md:ml-44 pb-20 md:pb-0 p-6 md:p-8 min-h-screen">
+      <main className="md:ml-48 pb-20 md:pb-0 p-6 md:p-8 min-h-screen">
         {children}
       </main>
     </div>
