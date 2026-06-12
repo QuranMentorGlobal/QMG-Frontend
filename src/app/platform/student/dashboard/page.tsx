@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import DashboardBanner from '@/components/platform/DashboardBanner'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -175,6 +176,9 @@ export default function StudentDashboard() {
             </>
           )}
         </div>
+
+        {/* Banner */}
+        <DashboardBanner role="student" />
 
         {/* Stats Row */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
