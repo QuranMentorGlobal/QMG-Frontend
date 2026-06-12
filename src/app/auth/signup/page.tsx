@@ -50,7 +50,21 @@ export default function SignupPage() {
     setSuccess(true)
     setLoading(false)
   }
-
+async function handleGoogleSignup() {
+  setLoading(true)
+  setError('')
+  const supabase = createClient()
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`,
+    }
+  })
+  if (error) {
+    setError(error.message)
+    setLoading(false)
+  }
+}
   const strength = pwStrength(password)
   const strengthColors = ['','#f87171','#fbbf24','#4ade80','#22c55e']
 
