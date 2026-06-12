@@ -1,6 +1,4 @@
 'use client'
-// src/app/auth/signup/page.tsx
-
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -30,22 +28,61 @@ export default function SignupPage() {
   }
 
   async function handleSignup() {
-    if (!firstName || !lastName || !email || !password || !country) { setError('Please fill in all required fields.'); return }
+    if (!firstName || !lastName || !email || !password || !country) {
+      setError('Please fill in all required fields.'); return
+    }
     if (!agreed) { setError('Please agree to the Terms of Service.'); return }
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
+
+    // Only allow valid DB roles
+    const validRole = role === 'teacher' ? 'teacher' : 'student'
+
     setError('')
     setLoading(true)
 
     const supabase = createClient()
-    const { error: authError } = await supabase.auth.signUp({
+
+    // Step 1 — Create auth user
+    const { data, error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { first_name: firstName, last_name: lastName, role }
+        data: {
+          first_name: firstName,
+          last_name: lastName,
+          role: validRole,
+        }
       }
     })
 
     if (authError) { setError(authError.message); setLoading(false); return }
+    if (!data.user) { setError('Signup failed. Please try again.'); setLoading(false); return }
+
+    // Step 2 — Explicitly upsert profile with correct role
+    await supabase.from('profiles').upsert({
+      id: data.user.id,
+      first_name: firstName,
+      last_name: lastName,
+      email: email,
+      role: validRole,
+      country: country,
+      is_active: true,
+    })
+
+    // Step 3 — If teacher, create teacher_profiles row
+    if (validRole === 'teacher') {
+      await supabase.from('teacher_profiles').upsert({
+        user_id: data.user.id,
+        status: 'not_submitted',
+        years_experience: 0,
+        specializations: [],
+        teaching_languages: [],
+        available_days: [],
+        hourly_rate_usd: 0,
+        trial_rate_usd: 0,
+        ijazah_verified: false,
+      })
+    }
 
     setSuccess(true)
     setLoading(false)
@@ -61,34 +98,36 @@ export default function SignupPage() {
         redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/callback`,
       }
     })
-    if (error) {
-      setError(error.message)
-      setLoading(false)
-    }
+    if (error) { setError(error.message); setLoading(false) }
   }
 
   const strength = pwStrength(password)
-  const strengthColors = ['','#f87171','#fbbf24','#4ade80','#22c55e']
+  const strengthColors = ['', '#f87171', '#fbbf24', '#4ade80', '#22c55e']
 
   if (success) {
     return (
       <>
         <style>{`
-          @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,600&display=swap');
           *{box-sizing:border-box;margin:0;padding:0}
-          body{font-family:'DM Sans',sans-serif;background:#0D3D20;display:flex;align-items:center;justify-content:center;min-height:100vh}
-          .success-box{background:#fff;border-radius:20px;padding:48px;text-align:center;max-width:420px;margin:20px}
-          .success-icon{font-size:56px;margin-bottom:20px}
-          h2{font-family:'Playfair Display',serif;font-size:28px;font-weight:800;color:#0D3D20;margin-bottom:12px}
-          p{font-size:15px;color:#6B6B6B;line-height:1.7;margin-bottom:28px}
-          a{display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#1B5E37,#2A7A4A);color:#fff;border-radius:12px;font-weight:700;text-decoration:none;font-family:'DM Sans',sans-serif}
         `}</style>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:'#0D3D20'}}>
-          <div className="success-box">
-            <div className="success-icon">📧</div>
-            <h2>Check Your Email!</h2>
-            <p>We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account, then sign in.</p>
-            <a href="/auth/login">Go to Sign In →</a>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#0D3D20' }}>
+          <div style={{ background: '#fff', borderRadius: 20, padding: 48, textAlign: 'center', maxWidth: 420, margin: 20 }}>
+            <div style={{ fontSize: 56, marginBottom: 20 }}>
+              {validRole === 'teacher' ? '🎓' : '📧'}
+            </div>
+            <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 28, fontWeight: 800, color: '#0D3D20', marginBottom: 12 }}>
+              {role === 'teacher' ? 'Welcome, Teacher!' : 'Check Your Email!'}
+            </h2>
+            <p style={{ fontSize: 15, color: '#6B6B6B', lineHeight: 1.7, marginBottom: 28 }}>
+              {role === 'teacher'
+                ? `Account created! Sign in and complete your verification to go live on the platform.`
+                : `We sent a confirmation link to ${email}. Click it to activate your account, then sign in.`
+              }
+            </p>
+            <a href="/auth/login"
+              style={{ display: 'inline-block', padding: '14px 32px', background: 'linear-gradient(135deg,#1B5E37,#2A7A4A)', color: '#fff', borderRadius: 12, fontWeight: 700, textDecoration: 'none' }}>
+              Go to Sign In →
+            </a>
           </div>
         </div>
       </>
@@ -132,12 +171,13 @@ export default function SignupPage() {
         .form-wrap .sub{font-size:15px;color:var(--tl);margin-bottom:24px}
         .form-wrap .sub a{color:var(--green);font-weight:700;text-decoration:none}
         .role-lbl{font-size:13px;font-weight:700;color:var(--tm);margin-bottom:10px}
-        .role-select{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:24px}
-        .role-opt{border:2px solid var(--cream-d);border-radius:12px;padding:14px 10px;cursor:pointer;transition:all .2s;text-align:center;background:#fff}
+        .role-select{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px}
+        .role-opt{border:2px solid var(--cream-d);border-radius:12px;padding:18px 10px;cursor:pointer;transition:all .2s;text-align:center;background:#fff}
         .role-opt:hover{border-color:var(--green-mid);background:var(--cream)}
         .role-opt.selected{border-color:var(--green);background:rgba(27,94,55,.06)}
-        .role-opt .rico{font-size:26px;margin-bottom:6px}
-        .role-opt .rlbl{font-size:13px;font-weight:600;color:var(--tm)}
+        .role-opt .rico{font-size:28px;margin-bottom:6px}
+        .role-opt .rlbl{font-size:14px;font-weight:700;color:var(--tm)}
+        .role-opt .rsub{font-size:11px;color:var(--tl);margin-top:3px}
         .role-opt.selected .rlbl{color:var(--green-dark)}
         .social-btn{display:flex;align-items:center;justify-content:center;gap:10px;padding:13px 20px;border-radius:12px;border:1.5px solid var(--cream-d);background:#fff;font-size:15px;font-weight:500;color:var(--td);cursor:pointer;transition:all .25s;font-family:'DM Sans',sans-serif;width:100%;margin-bottom:20px}
         .social-btn:hover{border-color:var(--green-mid);background:var(--cream);transform:translateY(-2px)}
@@ -164,7 +204,7 @@ export default function SignupPage() {
         .auth-switch a{color:var(--green);font-weight:700;text-decoration:none}
         .error-box{background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:10px;padding:12px 16px;font-size:13px;margin-bottom:16px}
         @media(max-width:920px){.auth-left{display:none}.auth-right{width:100%;padding:40px 24px}}
-        @media(max-width:500px){.role-select{grid-template-columns:1fr 1fr}.fg-row{grid-template-columns:1fr}}
+        @media(max-width:500px){.fg-row{grid-template-columns:1fr}}
       `}</style>
 
       <div className="auth-wrap">
@@ -174,8 +214,8 @@ export default function SignupPage() {
           <div className="left-inner">
             <a href="https://quranmentorglobal.com" className="auth-logo">
               <div className="logo-mark">
-                <svg viewBox="0 0 24 24" style={{width:22,height:22,fill:'#D4AF50'}}>
-                  <path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zM21 18.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v11.5z"/>
+                <svg viewBox="0 0 24 24" style={{ width: 22, height: 22, fill: '#D4AF50' }}>
+                  <path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zM21 18.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v11.5z" />
                 </svg>
               </div>
               <div className="logo-txt">
@@ -183,10 +223,14 @@ export default function SignupPage() {
                 <div className="tag">Learn · Connect · Grow</div>
               </div>
             </a>
-            <h1>Start Your<br/><span>Quran Learning</span><br/>Journey Today</h1>
+            <h1>Start Your<br /><span>Quran Learning</span><br />Journey Today</h1>
             <p>Join thousands of students learning with certified Qaris from the comfort of their home.</p>
             <div className="steps-mini">
-              {[{n:'1',t:'Create your account',s:'Takes less than 2 minutes'},{n:'2',t:'Browse & book a teacher',s:'Free trial lesson available'},{n:'3',t:'Start learning Quran',s:'Flexible schedule, any device'}].map(s=>(
+              {[
+                { n: '1', t: 'Create your account', s: 'Takes less than 2 minutes' },
+                { n: '2', t: 'Browse & book a teacher', s: 'Free trial lesson available' },
+                { n: '3', t: 'Start learning Quran', s: 'Flexible schedule, any device' }
+              ].map(s => (
                 <div className="sm" key={s.n}>
                   <div className="sm-n">{s.n}</div>
                   <div className="sm-txt"><div className="t">{s.t}</div><div className="s">{s.s}</div></div>
@@ -205,22 +249,30 @@ export default function SignupPage() {
             <h2>Create Account</h2>
             <p className="sub">Already have an account? <a href="/auth/login">Sign in →</a></p>
 
+            {/* ── Role selector — ONLY Student & Teacher ── */}
             <div className="role-lbl">I am joining as</div>
             <div className="role-select">
-              {[{r:'student',ico:'👤',lbl:'Student'},{r:'parent',ico:'👨‍👩‍👧',lbl:'Parent'},{r:'teacher',ico:'🎓',lbl:'Teacher'}].map(o=>(
-                <div key={o.r} className={`role-opt${role===o.r?' selected':''}`} onClick={()=>setRole(o.r)}>
+              {[
+                { r: 'student', ico: '🎓', lbl: 'Student', sub: 'I want to learn' },
+                { r: 'teacher', ico: '📖', lbl: 'Teacher', sub: 'I want to teach' },
+              ].map(o => (
+                <div
+                  key={o.r}
+                  className={`role-opt${role === o.r ? ' selected' : ''}`}
+                  onClick={() => setRole(o.r)}>
                   <div className="rico">{o.ico}</div>
                   <div className="rlbl">{o.lbl}</div>
+                  <div className="rsub">{o.sub}</div>
                 </div>
               ))}
             </div>
 
             <button className="social-btn" onClick={handleGoogleSignup} disabled={loading}>
               <svg width="20" height="20" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
               </svg>
               Sign up with Google
             </button>
@@ -232,49 +284,58 @@ export default function SignupPage() {
             <div className="fg-row">
               <div className="fg">
                 <label>First Name *</label>
-                <input type="text" placeholder="Ahmed" value={firstName} onChange={e=>setFirstName(e.target.value)} />
+                <input type="text" placeholder="Ahmad" value={firstName} onChange={e => setFirstName(e.target.value)} />
               </div>
               <div className="fg">
                 <label>Last Name *</label>
-                <input type="text" placeholder="Khan" value={lastName} onChange={e=>setLastName(e.target.value)} />
+                <input type="text" placeholder="Khan" value={lastName} onChange={e => setLastName(e.target.value)} />
               </div>
             </div>
 
             <div className="fg">
               <label>Email Address *</label>
-              <input type="email" placeholder="ahmed@example.com" value={email} onChange={e=>setEmail(e.target.value)} />
+              <input type="email" placeholder="ahmad@example.com" value={email} onChange={e => setEmail(e.target.value)} />
             </div>
 
             <div className="fg">
               <label>Password *</label>
               <div className="pw-wrap">
-                <input type={showPw?'text':'password'} placeholder="Create a strong password" value={password} onChange={e=>setPassword(e.target.value)} />
-                <button className="pw-toggle" onClick={()=>setShowPw(!showPw)} type="button">👁</button>
+                <input
+                  type={showPw ? 'text' : 'password'}
+                  placeholder="Min. 8 characters"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                />
+                <button className="pw-toggle" onClick={() => setShowPw(!showPw)} type="button">👁</button>
               </div>
               <div className="pw-strength">
-                {[1,2,3,4].map(i=>(
-                  <div key={i} className="ps" style={{background: strength>=i ? strengthColors[strength] : ''}}></div>
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="ps" style={{ background: strength >= i ? strengthColors[strength] : '' }}></div>
                 ))}
               </div>
             </div>
 
             <div className="fg">
               <label>Country *</label>
-              <select value={country} onChange={e=>setCountry(e.target.value)}>
+              <select value={country} onChange={e => setCountry(e.target.value)}>
                 <option value="">Select your country</option>
-                {['Pakistan','United Kingdom','United Arab Emirates','United States','Saudi Arabia','Canada','Australia','Other'].map(c=>(
+                {['Pakistan', 'United Kingdom', 'United Arab Emirates', 'United States', 'Saudi Arabia', 'Canada', 'Australia', 'Other'].map(c => (
                   <option key={c}>{c}</option>
                 ))}
               </select>
             </div>
 
             <div className="terms">
-              <input type="checkbox" checked={agreed} onChange={e=>setAgreed(e.target.checked)} />
-              <label>I agree to the <a href="https://quranmentorglobal.com/about.html">Terms of Service</a> and <a href="https://quranmentorglobal.com/about.html">Privacy Policy</a>.</label>
+              <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} />
+              <label>
+                I agree to the <a href="https://quranmentorglobal.com/about.html">Terms of Service</a> and{' '}
+                <a href="https://quranmentorglobal.com/about.html">Privacy Policy</a>.
+                {role === 'teacher' && ' Teachers must complete verification before going live.'}
+              </label>
             </div>
 
             <button className="submit-btn" onClick={handleSignup} disabled={loading}>
-              {loading?'Creating account...':'Create Account →'}
+              {loading ? 'Creating account...' : role === 'teacher' ? 'Create Teacher Account →' : 'Create Student Account →'}
             </button>
 
             <div className="auth-switch">
