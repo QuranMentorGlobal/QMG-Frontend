@@ -191,9 +191,9 @@ export default function LandingPage() {
         .hs::after{content:'';position:absolute;inset:0;background:linear-gradient(110deg,rgba(13,61,32,.65) 0%,rgba(13,61,32,.45) 55%,rgba(13,61,32,.28) 100%)}
 
         /* LOCAL image references — replace Unsplash URLs below with /images/hero/ paths */
-        .hs1{background-image:url('/images/hero/hero-1.png')}
-        .hs2{background-image:url('/images/hero/hero-2.png')}
-        .hs3{background-image:url('/images/hero/hero-3.png')}
+        .hs1{background-image:url('/images/hero/hero-1.jpg')}
+        .hs2{background-image:url('/images/hero/hero-2.jpg')}
+        .hs3{background-image:url('/images/hero/hero-3.jpg')}
         /* Fallback gradient shown when images haven't been uploaded yet */
         .hs1.no-img,.hs2.no-img,.hs3.no-img{background:linear-gradient(135deg,var(--green-dark),var(--green))}
 
@@ -455,7 +455,7 @@ export default function LandingPage() {
       {/* HERO */}
       <section className="hero" id="home">
         <div className="hero-slider">
-          {/* LOCAL image paths — add 1920×1080 pngs to /public/images/hero/ */}
+          {/* LOCAL image paths — add 1920×1080 JPGs to /public/images/hero/ */}
           <div className="hs hs1 active"></div>
           <div className="hs hs2"></div>
           <div className="hs hs3"></div>
@@ -513,12 +513,12 @@ export default function LandingPage() {
           </div>
           <div className="fgrid">
             {[
-              { img:'/images/features/expert-teachers.png',   ico:'🎓', title:'Expert Teachers',    desc:'Learn from qualified Qaris with verified Ijazah certifications and years of teaching experience across all levels.',    link:'/platform/teachers', linkTxt:'Meet Teachers →' },
-              { img:'/images/features/live-classes.png',      ico:'🎥', title:'Live 1-to-1 Classes', desc:'Personalized attention in private HD video sessions. No large groups — just you and your dedicated teacher.',            link:'/courses',            linkTxt:'View Courses →' },
-              { img:'/images/features/flexible-schedule.png', ico:'🗓️', title:'Flexible Schedule',   desc:'Book lessons that fit your timezone and lifestyle. Morning, evening, or weekend — you choose exactly when you learn.', link:'/auth/signup',        linkTxt:'Get Started →' },
-              { img:'/images/features/safe-secure.png',       ico:'🔒', title:'Safe & Secure',       desc:'Every teacher is background-checked and verified. Full parent monitoring available for all children\'s classes.',     link:'/about',              linkTxt:'Learn More →' },
-              { img:'/images/features/track-progress.png',    ico:'📊', title:'Track Progress',      desc:'Visual dashboards showing lesson history, Surah completion milestones, and detailed teacher feedback reports.',        link:'/auth/signup',        linkTxt:'Sign Up →' },
-              { img:'/images/features/global-community.png',  ico:'🌍', title:'Global Community',    desc:'Connecting hearts from Pakistan, UK, USA, Gulf and beyond. One Ummah, one shared mission of Quranic learning.',       link:'/about',              linkTxt:'Our Story →' },
+              { img:'/images/features/expert-teachers.jpg',   ico:'🎓', title:'Expert Teachers',    desc:'Learn from qualified Qaris with verified Ijazah certifications and years of teaching experience across all levels.',    link:'/platform/teachers', linkTxt:'Meet Teachers →' },
+              { img:'/images/features/live-classes.jpg',      ico:'🎥', title:'Live 1-to-1 Classes', desc:'Personalized attention in private HD video sessions. No large groups — just you and your dedicated teacher.',            link:'/courses',            linkTxt:'View Courses →' },
+              { img:'/images/features/flexible-schedule.jpg', ico:'🗓️', title:'Flexible Schedule',   desc:'Book lessons that fit your timezone and lifestyle. Morning, evening, or weekend — you choose exactly when you learn.', link:'/auth/signup',        linkTxt:'Get Started →' },
+              { img:'/images/features/safe-secure.jpg',       ico:'🔒', title:'Safe & Secure',       desc:'Every teacher is background-checked and verified. Full parent monitoring available for all children\'s classes.',     link:'/about',              linkTxt:'Learn More →' },
+              { img:'/images/features/track-progress.jpg',    ico:'📊', title:'Track Progress',      desc:'Visual dashboards showing lesson history, Surah completion milestones, and detailed teacher feedback reports.',        link:'/auth/signup',        linkTxt:'Sign Up →' },
+              { img:'/images/features/global-community.jpg',  ico:'🌍', title:'Global Community',    desc:'Connecting hearts from Pakistan, UK, USA, Gulf and beyond. One Ummah, one shared mission of Quranic learning.',       link:'/about',              linkTxt:'Our Story →' },
             ].map((f, i) => (
               <div className="fc" key={i}>
                 <div className="fc-img">
@@ -544,8 +544,8 @@ export default function LandingPage() {
           <div className="about-inner">
             <div className="about-imgw">
               <div className="about-main">
-                {/* LOCAL: replace with /images/home/about-home.png — 4:3 ratio */}
-                <img src="/images/home/about-home.png" alt="Student learning Quran online" loading="lazy"
+                {/* LOCAL: replace with /images/home/about-home.jpg — 4:3 ratio */}
+                <img src="/images/home/about-home.jpg" alt="Student learning Quran online" loading="lazy"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
               </div>
               <div className="about-badge"><div className="num">10K+</div><div className="lbl">Happy Students</div></div>
@@ -583,10 +583,10 @@ export default function LandingPage() {
           </div>
           <div className="cgrid">
             {[
-              { img:'/images/courses-cards/noorani-qaida.png',  lvlCls:'lv-b', lvl:'Beginner',    title:'Noorani Qaida',         desc:'Master Arabic letters and basic pronunciation — the essential foundation for every Quran learner.', age:'All Ages' },
-              { img:'/images/courses-cards/tajweed.png',        lvlCls:'lv-i', lvl:'Intermediate', title:'Tajweed Rules',          desc:'Perfect your recitation with the rules of Tajweed — recite the Quran the way it was revealed.',      age:'8+ Years' },
-              { img:'/images/courses-cards/hifz.png',           lvlCls:'lv-a', lvl:'Advanced',     title:'Hifz (Memorization)',    desc:'Memorize the Quran with a dedicated Hafiz mentor — structured programme with daily revision tracking.', age:'7+ Years' },
-              { img:'/images/courses-cards/tafseer.png',        lvlCls:'lv-s', lvl:'Scholarly',    title:'Tafseer & Translation',  desc:'Understand the deeper meaning and context of Quranic verses — deepen your connection with Allah\'s words.', age:'Adults' },
+              { img:'/images/courses-cards/noorani-qaida.jpg',  lvlCls:'lv-b', lvl:'Beginner',    title:'Noorani Qaida',         desc:'Master Arabic letters and basic pronunciation — the essential foundation for every Quran learner.', age:'All Ages' },
+              { img:'/images/courses-cards/tajweed.jpg',        lvlCls:'lv-i', lvl:'Intermediate', title:'Tajweed Rules',          desc:'Perfect your recitation with the rules of Tajweed — recite the Quran the way it was revealed.',      age:'8+ Years' },
+              { img:'/images/courses-cards/hifz.jpg',           lvlCls:'lv-a', lvl:'Advanced',     title:'Hifz (Memorization)',    desc:'Memorize the Quran with a dedicated Hafiz mentor — structured programme with daily revision tracking.', age:'7+ Years' },
+              { img:'/images/courses-cards/tafseer.jpg',        lvlCls:'lv-s', lvl:'Scholarly',    title:'Tafseer & Translation',  desc:'Understand the deeper meaning and context of Quranic verses — deepen your connection with Allah\'s words.', age:'Adults' },
             ].map((c, i) => (
               <div className="cc" key={i}>
                 <div className="cc-img">
@@ -626,8 +626,8 @@ export default function LandingPage() {
           <div className="how-inner">
             <div>
               <div className="how-img">
-                {/* LOCAL: /images/home/how-it-works.png — 5:4 ratio */}
-                <img src="/images/home/how-it-works.png" alt="How it works" loading="lazy"
+                {/* LOCAL: /images/home/how-it-works.jpg — 5:4 ratio */}
+                <img src="/images/home/how-it-works.jpg" alt="How it works" loading="lazy"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
               </div>
             </div>
@@ -663,10 +663,10 @@ export default function LandingPage() {
           </div>
           <div className="tgrid">
             {[
-              { img:'/images/teachers/teacher-1.png', name:'Qari Abdullah',  spec:'Tajweed & Hifz Specialist',       origin:'🇵🇰 Pakistan',     stars:'★★★★★ 4.9' },
-              { img:'/images/teachers/teacher-2.png', name:'Sheikh Ibrahim', spec:'Tafseer & Advanced Quran',         origin:'🇸🇦 Saudi Arabia', stars:'★★★★★ 4.8' },
-              { img:'/images/teachers/teacher-3.png', name:'Qari Yusuf',     spec:'Noorani Qaida · Kids',             origin:'🇵🇰 Pakistan',     stars:'★★★★★ 5.0' },
-              { img:'/images/teachers/teacher-4.png', name:'Ustadh Bilal',   spec:'Hifz · Memorization',              origin:'🇪🇬 Egypt',        stars:'★★★★★ 4.9' },
+              { img:'/images/teachers/teacher-1.jpg', name:'Qari Abdullah',  spec:'Tajweed & Hifz Specialist',       origin:'🇵🇰 Pakistan',     stars:'★★★★★ 4.9' },
+              { img:'/images/teachers/teacher-2.jpg', name:'Sheikh Ibrahim', spec:'Tafseer & Advanced Quran',         origin:'🇸🇦 Saudi Arabia', stars:'★★★★★ 4.8' },
+              { img:'/images/teachers/teacher-3.jpg', name:'Qari Yusuf',     spec:'Noorani Qaida · Kids',             origin:'🇵🇰 Pakistan',     stars:'★★★★★ 5.0' },
+              { img:'/images/teachers/teacher-4.jpg', name:'Ustadh Bilal',   spec:'Hifz · Memorization',              origin:'🇪🇬 Egypt',        stars:'★★★★★ 4.9' },
             ].map((t, i) => (
               <div className="tc" key={i}>
                 <div className="tc-img">
@@ -699,9 +699,9 @@ export default function LandingPage() {
           </div>
           <div className="tsgrid">
             {[
-              { txt:"My daughter started with zero Arabic knowledge. Within 3 months she is now reciting fluently with Tajweed. The teacher is so patient and the platform is very easy to use.", name:'Amina K.',  loc:'🇬🇧 Birmingham, UK',  img:'/images/testimonials/student-1.png' },
-              { txt:"As a working professional I could never find time for in-person classes. This platform lets me learn Tajweed at my own pace after work. Best decision I ever made.",            name:'Hassan R.',  loc:'🇦🇪 Dubai, UAE',       img:'/images/testimonials/student-2.png' },
-              { txt:"Finding a qualified Hafiz locally in Texas was near impossible. Quran Mentor Global solved that completely. My son is now in his second year of Hifz. Alhamdulillah.",       name:'Tariq M.',   loc:'🇺🇸 Houston, USA',     img:'/images/testimonials/student-3.png' },
+              { txt:"My daughter started with zero Arabic knowledge. Within 3 months she is now reciting fluently with Tajweed. The teacher is so patient and the platform is very easy to use.", name:'Amina K.',  loc:'🇬🇧 Birmingham, UK',  img:'/images/testimonials/student-1.jpg' },
+              { txt:"As a working professional I could never find time for in-person classes. This platform lets me learn Tajweed at my own pace after work. Best decision I ever made.",            name:'Hassan R.',  loc:'🇦🇪 Dubai, UAE',       img:'/images/testimonials/student-2.jpg' },
+              { txt:"Finding a qualified Hafiz locally in Texas was near impossible. Quran Mentor Global solved that completely. My son is now in his second year of Hifz. Alhamdulillah.",       name:'Tariq M.',   loc:'🇺🇸 Houston, USA',     img:'/images/testimonials/student-3.jpg' },
             ].map((t, i) => (
               <div className="tsc" key={i}>
                 <span className="tsc-q">"</span>
