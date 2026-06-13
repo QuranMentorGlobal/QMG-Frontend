@@ -53,8 +53,8 @@ export default function SignupPage() {
     if (authError) { setError(authError.message); setLoading(false); return }
     if (!data.user) { setError('Signup failed. Please try again.'); setLoading(false); return }
 
-    // Step 2 — Upsert profile
-    await (supabase.from('profiles') as any).upsert({
+    // Step 2 — Upsert profile (done twice to override Supabase trigger default)
+    const profileData = {
       id: data.user.id,
       first_name: firstName,
       last_name: lastName,
@@ -62,7 +62,13 @@ export default function SignupPage() {
       role: validRole,
       country: country,
       is_active: true,
-    }).select()
+    }
+    await (supabase.from('profiles') as any).upsert(profileData).select()
+    // Small delay to let trigger complete, then override with correct role
+    await new Promise(r => setTimeout(r, 800))
+    await (supabase.from('profiles') as any)
+      .update({ role: validRole, first_name: firstName, last_name: lastName, country: country })
+      .eq('id', data.user.id)
 
     // Step 3 — Role-specific rows
     if (validRole === 'teacher') {
@@ -161,7 +167,7 @@ export default function SignupPage() {
         .o2{width:300px;height:300px;background:radial-gradient(circle,rgba(27,94,55,.6) 0%,transparent 70%);bottom:-80px;left:-60px}
         .left-inner{position:relative;z-index:1;max-width:440px}
         .auth-logo{display:flex;align-items:center;gap:12px;margin-bottom:48px;text-decoration:none}
-        .logo-mark{width:44px;height:44px;background:rgba(255,255,255,.1);border:1px solid rgba(184,149,42,.3);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+        .logo-mark{width:52px;height:52px;background:rgba(255,255,255,.12);border:1.5px solid rgba(184,149,42,.35);border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:4px}
         .logo-txt .name{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:#fff;line-height:1.1}
         .logo-txt .name span{color:var(--gold)}
         .logo-txt .tag{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:.1em;text-transform:uppercase}
@@ -236,9 +242,7 @@ export default function SignupPage() {
           <div className="left-inner">
             <a href="https://quranmentorglobal.com" className="auth-logo">
               <div className="logo-mark">
-                <svg viewBox="0 0 24 24" style={{ width: 22, height: 22, fill: '#D4AF50' }}>
-                  <path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zM21 18.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v11.5z" />
-                </svg>
+                <img src="/logo.png" alt="QMG Logo" style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 8 }} />
               </div>
               <div className="logo-txt">
                 <div className="name">Quran <span>Mentor</span> Global</div>
