@@ -7,7 +7,7 @@ const COURSES = [
   {
     cat: 'beginner',
     ico: '🔤',
-    img: '/images/courses-cards/noorani-qaida.jpg',
+    img: '/images/courses-cards/noorani-qaida.png',
     lvlCls: 'lv-b', lvl: 'Beginner',
     title: 'Noorani Qaida',
     desc: 'Master Arabic letters and basic Quran pronunciation from scratch — the essential first step for every new learner.',
@@ -17,7 +17,7 @@ const COURSES = [
   {
     cat: 'beginner kids',
     ico: '👧',
-    img: '/images/courses-cards/kids-quran.jpg',
+    img: '/images/courses-cards/kids-quran.png',
     lvlCls: 'lv-b', lvl: 'Beginner',
     title: 'Kids Quran Programme',
     desc: 'Fun, engaging and structured Quran learning designed for children ages 4–10. Patient teachers who specialize in young learners.',
@@ -27,7 +27,7 @@ const COURSES = [
   {
     cat: 'intermediate',
     ico: '🎵',
-    img: '/images/courses-cards/tajweed.jpg',
+    img: '/images/courses-cards/tajweed.png',
     lvlCls: 'lv-i', lvl: 'Intermediate',
     title: 'Tajweed Rules',
     desc: 'Perfect your recitation with the rules of Tajweed — recite the Quran exactly the way it was revealed to the Prophet ﷺ.',
@@ -37,7 +37,7 @@ const COURSES = [
   {
     cat: 'advanced',
     ico: '📖',
-    img: '/images/courses-cards/hifz.jpg',
+    img: '/images/courses-cards/hifz.png',
     lvlCls: 'lv-a', lvl: 'Advanced',
     title: 'Hifz (Memorization)',
     desc: 'Memorize the Quran with a dedicated Hafiz mentor — structured programme with daily revision targets and tracking.',
@@ -47,7 +47,7 @@ const COURSES = [
   {
     cat: 'advanced',
     ico: '🌙',
-    img: '/images/courses-cards/tafseer.jpg',
+    img: '/images/courses-cards/tafseer.png',
     lvlCls: 'lv-s', lvl: 'Scholarly',
     title: 'Tafseer & Translation',
     desc: 'Understand the deeper meaning and context of Quranic verses — deepen your connection with Allah\'s words.',
@@ -57,7 +57,7 @@ const COURSES = [
   {
     cat: 'intermediate advanced',
     ico: '🏅',
-    img: '/images/courses-cards/ijazah.jpg',
+    img: '/images/courses-cards/ijazah.png',
     lvlCls: 'lv-a', lvl: 'Advanced',
     title: 'Ijazah Programme',
     desc: 'Earn a formal Ijazah certification in Quranic recitation — an unbroken chain of transmission from teacher to student.',
@@ -132,8 +132,8 @@ export default function CoursesPage() {
       <LandingNav />
 
       {/* ── Page Hero ── */}
-      <section className="page-hero" style={{backgroundImage:"url('/images/courses/courses-hero.jpg')"}}>
-        <div className="page-hero-bg" style={{backgroundImage:"url('/images/courses/courses-hero.jpg')"}}></div>
+      <section className="page-hero" style={{backgroundImage:"url('/images/courses/courses-hero.png')"}}>
+        <div className="page-hero-bg" style={{backgroundImage:"url('/images/courses/courses-hero.png')"}}></div>
         <div className="container">
           <div className="breadcrumb">
             <Link href="/">Home</Link><span className="sep">›</span><span>Courses</span>
@@ -186,7 +186,7 @@ export default function CoursesPage() {
             {filtered.map((c, i) => (
               <div className="cc" key={i}>
                 <div className="cc-img">
-                  {/* LOCAL: /images/courses-cards/[slug].jpg — 4:3 ratio */}
+                  {/* LOCAL: /images/courses-cards/[slug].png — 4:3 ratio */}
                   <img src={c.img} alt={c.title} loading="lazy"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
                   <span className={`cc-lvl ${c.lvlCls}`}>{c.lvl}</span>
