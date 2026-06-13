@@ -1,250 +1,324 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import DashboardBanner from '@/components/platform/DashboardBanner'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 
-function Skeleton({ className = '' }: { className?: string }) {
-  return <div className={`animate-pulse rounded-xl bg-[#E8E4DA] ${className}`} />
+interface Stats {
+  totalStudents: number
+  todayLessons: number
+  pendingBookings: number
+  monthlyEarnings: number
 }
 
-function getInitials(first: string, last: string) {
-  return `${(first[0] ?? '').toUpperCase()}${(last[0] ?? '').toUpperCase()}`
+interface Booking {
+  id: string
+  student_name: string
+  course_title: string
+  start_date: string
+  session_time: string
+  status: string
+  price_usd: number
+  is_trial: boolean
+  student_notes: string | null
 }
 
-export default function TeacherDashboard() {
-  const supabase = createClient()
+interface Lesson {
+  id: string
+  scheduled_at: string
+  status: string
+  student_name: string
+  course_title: string
+  duration_mins: number
+}
+
+export default function TeacherDashboardPage() {
   const router = useRouter()
+  const supabase = createClient()
 
-  const [profile, setProfile] = useState<any>(null)
-  const [stats, setStats] = useState({ students: 0, todayLessons: 0, pendingBookings: 0, monthEarnings: 0 })
-  const [pendingBookings, setPendingBookings] = useState<any[]>([])
-  const [upcomingLessons, setUpcomingLessons] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState<Stats>({ totalStudents: 0, todayLessons: 0, pendingBookings: 0, monthlyEarnings: 0 })
+  const [pendingBookings, setPendingBookings] = useState<Booking[]>([])
+  const [upcomingLessons, setUpcomingLessons] = useState<Lesson[]>([])
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   useEffect(() => {
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.replace('/auth/login'); return }
-
-      const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-      if (!prof) { router.replace('/auth/login'); return }
-      if ((prof as any).role !== 'teacher') { router.replace('/platform/student/dashboard'); return }
-      setProfile(prof)
-
-      // Pending bookings
-      const { data: pending } = await supabase
-        .from('bookings')
-        .select(`id, status, start_date, session_time, price_usd, is_trial, recurrence,
-          courses ( title, course_type ),
-          profiles!bookings_student_id_fkey ( first_name, last_name, avatar_url, country )`)
-        .eq('teacher_id', user.id)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false })
-        .limit(5)
-
-      setPendingBookings((pending as any) ?? [])
-
-      // Upcoming lessons today
-      const todayStart = new Date(); todayStart.setHours(0,0,0,0)
-      const todayEnd = new Date(); todayEnd.setHours(23,59,59,999)
-
-      const { data: lessons } = await supabase
-        .from('lessons')
-        .select(`id, scheduled_at, duration_mins, status, daily_room_url,
-          bookings ( courses ( title ), profiles!bookings_student_id_fkey ( first_name, last_name, avatar_url ) )`)
-        .eq('teacher_id', user.id)
-        .eq('status', 'scheduled')
-        .gte('scheduled_at', new Date().toISOString())
-        .order('scheduled_at', { ascending: true })
-        .limit(5)
-
-      setUpcomingLessons((lessons as any) ?? [])
-
-      // Stats
-      const { count: studentsCount } = await supabase
-        .from('bookings').select('student_id', { count: 'exact', head: true })
-        .eq('teacher_id', user.id).eq('status', 'confirmed')
-
-      const { count: pendingCount } = await supabase
-        .from('bookings').select('id', { count: 'exact', head: true })
-        .eq('teacher_id', user.id).eq('status', 'pending')
-
-      const { count: todayCount } = await supabase
-        .from('lessons').select('id', { count: 'exact', head: true })
-        .eq('teacher_id', user.id).eq('status', 'scheduled')
-        .gte('scheduled_at', todayStart.toISOString())
-        .lte('scheduled_at', todayEnd.toISOString())
-
-      const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0)
-      const { data: payments } = await supabase
-        .from('payments').select('teacher_payout_usd')
-        .eq('teacher_id', user.id).eq('status', 'succeeded')
-        .gte('created_at', monthStart.toISOString())
-
-      const monthEarnings = (payments ?? []).reduce((sum: number, p: any) => sum + (p.teacher_payout_usd ?? 0), 0)
-
-      setStats({
-        students: studentsCount ?? 0,
-        todayLessons: todayCount ?? 0,
-        pendingBookings: pendingCount ?? 0,
-        monthEarnings,
-      })
-
-      setLoading(false)
-    }
-    load()
+    loadDashboard()
   }, [])
 
-  async function handleBooking(bookingId: string, action: 'confirmed' | 'cancelled') {
-    await (supabase.from('bookings') as any).update({ status: action }).eq('id', bookingId)
-    setPendingBookings(prev => prev.filter(b => b.id !== bookingId))
-    setStats(prev => ({ ...prev, pendingBookings: prev.pendingBookings - 1 }))
+  async function loadDashboard() {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { router.push('/auth/login'); return }
+
+    const teacherId = user.id
+    const today = new Date().toISOString().split('T')[0]
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
+
+    // Pending bookings with student info
+    const { data: bookingsData } = await supabase
+      .from('teacher_bookings_view')
+      .select('*')
+      .eq('teacher_id', teacherId)
+      .eq('status', 'pending')
+      .order('start_date', { ascending: true })
+
+    // Upcoming lessons
+    const { data: lessonsData } = await supabase
+      .from('lessons')
+      .select('id, scheduled_at, status, duration_mins, teacher_notes')
+      .eq('teacher_id', teacherId)
+      .in('status', ['scheduled', 'live'])
+      .gte('scheduled_at', new Date().toISOString())
+      .order('scheduled_at', { ascending: true })
+      .limit(5)
+
+    // Stats
+    const { count: studentCount } = await supabase
+      .from('bookings')
+      .select('student_id', { count: 'exact', head: true })
+      .eq('teacher_id', teacherId)
+      .eq('status', 'confirmed')
+
+    const { count: todayCount } = await supabase
+      .from('lessons')
+      .select('id', { count: 'exact', head: true })
+      .eq('teacher_id', teacherId)
+      .gte('scheduled_at', `${today}T00:00:00`)
+      .lte('scheduled_at', `${today}T23:59:59`)
+
+    const { count: pendingCount } = await supabase
+      .from('bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('teacher_id', teacherId)
+      .eq('status', 'pending')
+
+    const { data: earningsData } = await supabase
+      .from('payments')
+      .select('teacher_payout_usd')
+      .eq('teacher_id', teacherId)
+      .eq('status', 'succeeded')
+      .gte('created_at', monthStart)
+
+    const monthlyEarnings = (earningsData || []).reduce((sum: number, p: any) => sum + (p.teacher_payout_usd || 0), 0)
+
+    setStats({
+      totalStudents: studentCount || 0,
+      todayLessons: todayCount || 0,
+      pendingBookings: pendingCount || 0,
+      monthlyEarnings,
+    })
+
+    setPendingBookings((bookingsData as any) || [])
+
+    // Map lessons with student name from bookings join
+    setUpcomingLessons(
+      (lessonsData || []).map((l: any) => ({
+        id: l.id,
+        scheduled_at: l.scheduled_at,
+        status: l.status,
+        student_name: 'Student',
+        course_title: 'Lesson',
+        duration_mins: l.duration_mins,
+      }))
+    )
+
+    setLoading(false)
   }
 
-  const greeting = (() => {
-    const h = new Date().getHours()
-    if (h < 12) return 'Good morning'
-    if (h < 17) return 'Good afternoon'
-    return 'Good evening'
-  })()
+  async function handleBookingAction(bookingId: string, action: 'confirmed' | 'cancelled') {
+    setActionLoading(bookingId + action)
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({
+          status: action,
+          ...(action === 'cancelled' ? { cancel_reason: 'Declined by teacher' } : {}),
+        })
+        .eq('id', bookingId)
+
+      if (error) throw error
+
+      // Remove from pending list
+      setPendingBookings(prev => prev.filter(b => b.id !== bookingId))
+      setStats(prev => ({ ...prev, pendingBookings: prev.pendingBookings - 1 }))
+
+      showToast(
+        action === 'confirmed' ? '✅ Booking confirmed! Student will be notified.' : '❌ Booking declined.',
+        'success'
+      )
+    } catch (err: any) {
+      showToast('Something went wrong. Please try again.', 'error')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  function showToast(message: string, type: 'success' | 'error') {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 4000)
+  }
+
+  function formatDate(dateStr: string) {
+    return new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  }
+
+  function formatTime(dateStr: string) {
+    return new Date(dateStr).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+  }
+
+  const statCards = [
+    { label: 'Total Students', value: stats.totalStudents, icon: '👨‍🎓', color: 'bg-blue-50 text-blue-700' },
+    { label: "Today's Lessons", value: stats.todayLessons, icon: '📖', color: 'bg-green-50 text-green-700' },
+    { label: 'Pending Bookings', value: stats.pendingBookings, icon: '⏳', color: 'bg-yellow-50 text-yellow-700' },
+    { label: 'Monthly Earnings', value: `$${stats.monthlyEarnings.toFixed(0)}`, icon: '💰', color: 'bg-purple-50 text-purple-700' },
+  ]
 
   return (
-    <div className="w-full">
+    <div className="p-4 md:p-8 max-w-5xl mx-auto">
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed top-6 right-6 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-medium transition-all ${
+          toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+        }`}>
+          {toast.message}
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-8">
-        {loading ? <Skeleton className="h-8 w-64" /> : (
-          <>
-            <p className="text-[#1B5E37]/60 text-sm font-medium uppercase tracking-wider mb-1">{greeting}</p>
-            <h1 className="text-3xl font-bold text-[#0D3D20]">
-              {profile?.first_name} 🌙
-            </h1>
-            <p className="text-[#1B5E37]/60 text-sm mt-1">Manage your students, bookings and lessons.</p>
-          </>
-        )}
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900" style={{ fontFamily: 'Playfair Display, serif' }}>
+          Teacher Dashboard
+        </h1>
+        <p className="text-gray-500 mt-1">Assalamu Alaikum! Here's your overview.</p>
       </div>
-
-      {/* Banner */}
-      <DashboardBanner role="teacher" />
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {[
-          { label: 'Active Students',   value: stats.students,        icon: '👨‍🎓', gold: false },
-          { label: "Today's Lessons",   value: stats.todayLessons,    icon: '📅', gold: false },
-          { label: 'Pending Bookings',  value: stats.pendingBookings, icon: '⏳', gold: stats.pendingBookings > 0 },
-          { label: 'Earnings (Month)',  value: `$${stats.monthEarnings.toFixed(0)}`, icon: '💰', gold: true },
-        ].map(s => (
-          <div key={s.label} className={`rounded-2xl p-5 border ${s.gold ? 'bg-gradient-to-br from-[#B8952A] to-[#9A7B22] border-transparent' : 'bg-white border-[#D4C99A]'}`}>
-            {loading ? <Skeleton className="h-12 w-full" /> : (
-              <>
-                <div className="text-2xl mb-2">{s.icon}</div>
-                <div className={`text-2xl font-extrabold ${s.gold ? 'text-white' : 'text-[#0D3D20]'}`}>{s.value}</div>
-                <div className={`text-xs mt-0.5 ${s.gold ? 'text-white/70' : 'text-[#1B5E37]/50'}`}>{s.label}</div>
-              </>
-            )}
-          </div>
-        ))}
+        {loading
+          ? Array(4).fill(0).map((_, i) => (
+              <div key={i} className="bg-gray-100 rounded-2xl h-28 animate-pulse" />
+            ))
+          : statCards.map(card => (
+              <div key={card.label} className={`rounded-2xl p-5 ${card.color}`}>
+                <div className="text-2xl mb-2">{card.icon}</div>
+                <div className="text-2xl font-bold">{card.value}</div>
+                <div className="text-xs font-medium mt-1 opacity-80">{card.label}</div>
+              </div>
+            ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Pending Bookings */}
+      <div className="mb-8">
+        <h2 className="text-lg font-bold text-gray-900 mb-4">
+          Pending Booking Requests
+          {pendingBookings.length > 0 && (
+            <span className="ml-2 bg-yellow-100 text-yellow-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+              {pendingBookings.length}
+            </span>
+          )}
+        </h2>
 
-        {/* Pending Bookings */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-[#0D3D20]">Pending Bookings</h2>
-            <Link href="/platform/teacher/bookings" className="text-sm text-[#1B5E37] hover:underline">View all →</Link>
-          </div>
+        {loading ? (
           <div className="space-y-3">
-            {loading ? [1,2].map(i => <Skeleton key={i} className="h-28 w-full" />) :
-             pendingBookings.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-[#D4C99A] p-8 text-center">
-                <div className="text-3xl mb-2">📭</div>
-                <p className="text-[#1B5E37]/50 text-sm">No pending bookings</p>
-              </div>
-            ) : pendingBookings.map((b: any) => {
-              const student = b.profiles
-              const course = b.courses
-              return (
-                <div key={b.id} className="bg-white rounded-2xl border border-[#D4C99A] p-4 shadow-sm">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-full bg-[#1B5E37] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                      {getInitials(student?.first_name ?? 'S', student?.last_name ?? 'T')}
+            {Array(2).fill(0).map((_, i) => (
+              <div key={i} className="bg-gray-100 rounded-2xl h-28 animate-pulse" />
+            ))}
+          </div>
+        ) : pendingBookings.length === 0 ? (
+          <div className="bg-gray-50 rounded-2xl p-8 text-center text-gray-400">
+            <div className="text-3xl mb-2">✅</div>
+            <p className="font-medium">No pending requests</p>
+            <p className="text-sm mt-1">New booking requests will appear here</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {pendingBookings.map(booking => (
+              <div key={booking.id} className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-semibold text-gray-900">
+                        {(booking as any).student_first_name
+                          ? `${(booking as any).student_first_name} ${(booking as any).student_last_name || ''}`
+                          : 'New Student'}
+                      </span>
+                      {booking.is_trial && (
+                        <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">
+                          Trial
+                        </span>
+                      )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-[#0D3D20] text-sm">{student?.first_name} {student?.last_name}</p>
-                      <p className="text-xs text-[#1B5E37]/60">{course?.title} · {b.is_trial ? 'Trial' : 'Regular'}</p>
-                      <p className="text-xs text-[#1B5E37]/50">{b.session_time} · {b.recurrence} · ${b.price_usd}</p>
+                    <div className="text-sm text-gray-500">
+                      {(booking as any).course_title || 'Course'} &middot; {formatDate(booking.start_date)} &middot; {booking.session_time?.slice(0, 5)}
                     </div>
-                    <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium flex-shrink-0">Pending</span>
+                    <div className="text-sm font-semibold text-green-700 mt-1">
+                      ${booking.price_usd}
+                    </div>
+                    {booking.student_notes && (
+                      <div className="text-xs text-gray-400 mt-1 italic">"{booking.student_notes}"</div>
+                    )}
                   </div>
+
                   <div className="flex gap-2">
                     <button
-                      onClick={() => handleBooking(b.id, 'confirmed')}
-                      className="flex-1 bg-[#1B5E37] text-white py-1.5 rounded-lg text-xs font-bold hover:bg-[#0D3D20] transition-colors"
+                      onClick={() => handleBookingAction(booking.id, 'confirmed')}
+                      disabled={actionLoading !== null}
+                      className="flex-1 md:flex-none px-5 py-2 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-50"
+                      style={{ backgroundColor: actionLoading === booking.id + 'confirmed' ? '#aaa' : '#1B5E37' }}
                     >
-                      ✓ Confirm
+                      {actionLoading === booking.id + 'confirmed' ? 'Accepting...' : 'Accept'}
                     </button>
                     <button
-                      onClick={() => handleBooking(b.id, 'cancelled')}
-                      className="flex-1 bg-red-50 text-red-600 border border-red-200 py-1.5 rounded-lg text-xs font-bold hover:bg-red-100 transition-colors"
+                      onClick={() => handleBookingAction(booking.id, 'cancelled')}
+                      disabled={actionLoading !== null}
+                      className="flex-1 md:flex-none px-5 py-2 rounded-xl text-sm font-semibold border border-red-200 text-red-600 hover:bg-red-50 transition-all disabled:opacity-50"
                     >
-                      ✕ Decline
+                      {actionLoading === booking.id + 'cancelled' ? 'Declining...' : 'Decline'}
                     </button>
                   </div>
                 </div>
-              )
-            })}
-          </div>
-        </section>
-
-        {/* Upcoming Lessons */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-[#0D3D20]">Upcoming Lessons</h2>
-          </div>
-          <div className="space-y-3">
-            {loading ? [1,2].map(i => <Skeleton key={i} className="h-20 w-full" />) :
-             upcomingLessons.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-[#D4C99A] p-8 text-center">
-                <div className="text-3xl mb-2">📚</div>
-                <p className="text-[#1B5E37]/50 text-sm">No upcoming lessons</p>
               </div>
-            ) : upcomingLessons.map((l: any) => {
-              const dt = new Date(l.scheduled_at)
-              const student = l.bookings?.profiles
-              const isToday = new Date().toDateString() === dt.toDateString()
-              return (
-                <div key={l.id} className={`bg-white rounded-2xl border p-4 flex items-center gap-4 shadow-sm ${isToday ? 'border-[#B8952A]' : 'border-[#D4C99A]'}`}>
-                  <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-[#F5F0E8] border border-[#D4C99A] flex flex-col items-center justify-center">
-                    <span className="text-[10px] text-[#1B5E37]/50">{dt.toLocaleDateString('en-GB', { weekday: 'short' })}</span>
-                    <span className="text-lg font-extrabold text-[#0D3D20] leading-none">{dt.getDate()}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-[#0D3D20] text-sm truncate">{l.bookings?.courses?.title}</p>
-                    <p className="text-xs text-[#1B5E37]/60">with {student?.first_name} {student?.last_name}</p>
-                    <p className="text-xs text-[#1B5E37]/50">{dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · {l.duration_mins} min</p>
-                  </div>
-                  {l.daily_room_url && isToday && (
-                    <a href={l.daily_room_url} target="_blank" rel="noopener noreferrer"
-                      className="flex-shrink-0 bg-[#1B5E37] text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-[#0D3D20] transition-colors">
-                      Start
-                    </a>
-                  )}
-                </div>
-              )
-            })}
+            ))}
           </div>
+        )}
+      </div>
 
-          {/* Hadith */}
-          <div className="mt-4 bg-gradient-to-br from-[#1B5E37] to-[#0D3D20] rounded-2xl p-5 text-center">
-            <p className="text-[#B8952A] text-lg font-bold mb-1" style={{ fontFamily: 'serif' }}>خَيْرُكُمْ مَنْ تَعَلَّمَ الْقُرْآنَ وَعَلَّمَهُ</p>
-            <p className="text-white/70 text-xs">"The best of you are those who learn the Quran and teach it."</p>
-            <p className="text-[#B8952A]/60 text-[10px] mt-1">— Sahih Al-Bukhari</p>
+      {/* Upcoming Lessons */}
+      <div>
+        <h2 className="text-lg font-bold text-gray-900 mb-4">Upcoming Lessons</h2>
+
+        {loading ? (
+          <div className="space-y-3">
+            {Array(3).fill(0).map((_, i) => (
+              <div key={i} className="bg-gray-100 rounded-2xl h-20 animate-pulse" />
+            ))}
           </div>
-        </section>
+        ) : upcomingLessons.length === 0 ? (
+          <div className="bg-gray-50 rounded-2xl p-8 text-center text-gray-400">
+            <div className="text-3xl mb-2">📅</div>
+            <p className="font-medium">No upcoming lessons</p>
+            <p className="text-sm mt-1">Confirmed bookings will generate lessons here</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {upcomingLessons.map(lesson => (
+              <div key={lesson.id} className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-gray-900">{lesson.student_name}</div>
+                  <div className="text-sm text-gray-500">
+                    {formatDate(lesson.scheduled_at)} at {formatTime(lesson.scheduled_at)} &middot; {lesson.duration_mins} min
+                  </div>
+                </div>
+                <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
+                  lesson.status === 'live' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                }`}>
+                  {lesson.status === 'live' ? '🔴 Live' : 'Scheduled'}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
