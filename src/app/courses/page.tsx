@@ -94,8 +94,8 @@ export default function CoursesPage() {
         .cc:hover { box-shadow: 0 24px 60px rgba(0,0,0,.14); transform: translateY(-8px); border-color: var(--gold-pale); }
 
         /* 4:3 course card images */
-        .cc-img { aspect-ratio: 4/3; overflow: hidden; position: relative; background: var(--cream-d); }
-        .cc-img img { width: 100%; height: 100%; object-fit: cover; transition: transform .5s; display: block; }
+        .cc-img { position: relative; width: 100%; aspect-ratio: 4/3; overflow: hidden; background: var(--cream-d); }
+        .cc-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .5s; display: block; }
         .cc:hover .cc-img img { transform: scale(1.07); }
 
         .cc-lvl { position: absolute; top: 10px; left: 10px; font-size: 10px; font-weight: 700; padding: 4px 11px; border-radius: 20px; letter-spacing: .08em; text-transform: uppercase; }
