@@ -1,11 +1,11 @@
 'use client'
-import DashboardBanner from '@/components/platform/DashboardBanner'
 
+import DashboardBanner from '@/components/platform/DashboardBanner'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { requireRole } from '@/lib/auth'
+import Link from 'next/link'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ── Types ──────────────────────────────────────────────────────────────────────
 
 interface Child {
   id: string
@@ -36,91 +36,158 @@ interface DashStats {
   nextLessonIn: string | null
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-GB', {
-    weekday: 'short', day: 'numeric', month: 'short',
-  })
+  return new Date(iso).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
 function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString('en-GB', {
-    hour: '2-digit', minute: '2-digit',
-  })
+  return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 }
 
 function getInitials(first: string, last: string) {
   return `${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase()
 }
 
-function statusColor(s: string) {
-  if (s === 'scheduled') return 'bg-blue-100 text-blue-700'
-  if (s === 'live')      return 'bg-green-100 text-green-700'
-  if (s === 'completed') return 'bg-gray-100 text-gray-600'
-  if (s === 'cancelled') return 'bg-red-100 text-red-600'
-  return 'bg-gray-100 text-gray-500'
+function getGreeting() {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  return 'Good evening'
 }
-
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 function Skeleton({ className = '' }: { className?: string }) {
-  return <div className={`animate-pulse bg-[#EDE6D6] rounded-lg ${className}`} />
+  return <div className={`animate-pulse bg-[#EDE6D6] rounded-2xl ${className}`} />
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ── KPI Card — same pattern as student + teacher ───────────────────────────────
+
+function KpiCard({ label, value, icon, gradient, iconBg, loading }: {
+  label: string; value: string | number; icon: string
+  gradient: string; iconBg: string; loading: boolean
+}) {
+  if (loading) return <Skeleton className="h-28" />
+  return (
+    <div
+      className="rounded-2xl p-5 flex flex-col justify-between transition-all duration-200 cursor-default"
+      style={{ background: gradient, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(255,255,255,0.6)' }}
+      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)' }}
+      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 12px rgba(0,0,0,0.06)' }}
+    >
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3"
+        style={{ background: iconBg }}>
+        {icon}
+      </div>
+      <div>
+        <div className="text-2xl font-bold" style={{ color: '#0D3D20', fontFamily: "'Playfair Display', serif" }}>
+          {value}
+        </div>
+        <div className="text-xs font-medium mt-0.5" style={{ color: '#5A7A6A' }}>{label}</div>
+      </div>
+    </div>
+  )
+}
+
+// ── Quick Action — same pattern ────────────────────────────────────────────────
+
+function QuickAction({ icon, label, href, color }: { icon: string; label: string; href: string; color: string }) {
+  return (
+    <Link
+      href={href}
+      className="flex flex-col items-center gap-2 p-4 rounded-2xl text-center transition-all duration-150"
+      style={{ background: '#fff', border: '1px solid rgba(27,94,55,0.08)', boxShadow: '0 1px 6px rgba(0,0,0,0.04)' }}
+      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.08)' }}
+      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 1px 6px rgba(0,0,0,0.04)' }}
+    >
+      <span className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background: color }}>
+        {icon}
+      </span>
+      <span className="text-xs font-semibold" style={{ color: '#0D3D20' }}>{label}</span>
+    </Link>
+  )
+}
+
+// ── Empty State ────────────────────────────────────────────────────────────────
+
+function EmptyState({ emoji, title, sub, cta, ctaHref }: {
+  emoji: string; title: string; sub: string; cta?: string; ctaHref?: string
+}) {
+  return (
+    <div className="rounded-2xl p-10 text-center"
+      style={{ background: 'rgba(255,255,255,0.7)', border: '1px dashed rgba(27,94,55,0.15)' }}>
+      <div className="text-4xl mb-3">{emoji}</div>
+      <p className="font-semibold text-sm" style={{ color: '#1B5E37' }}>{title}</p>
+      <p className="text-xs mt-1.5" style={{ color: '#8A9A8A' }}>{sub}</p>
+      {cta && ctaHref && (
+        <Link href={ctaHref}
+          className="inline-block mt-4 px-5 py-2 rounded-xl text-sm font-semibold text-white transition-all"
+          style={{ background: '#1B5E37' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#0D3D20' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#1B5E37' }}>
+          {cta}
+        </Link>
+      )}
+    </div>
+  )
+}
+
+// ── Status badge ───────────────────────────────────────────────────────────────
+
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, { bg: string; color: string }> = {
+    scheduled: { bg: 'rgba(99,102,241,0.1)',  color: '#6366F1' },
+    live:      { bg: 'rgba(34,197,94,0.1)',   color: '#16A34A' },
+    completed: { bg: 'rgba(27,94,55,0.08)',   color: '#1B5E37' },
+    cancelled: { bg: 'rgba(239,68,68,0.1)',   color: '#DC2626' },
+  }
+  const s = map[status] ?? { bg: 'rgba(0,0,0,0.06)', color: '#666' }
+  return (
+    <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg"
+      style={{ background: s.bg, color: s.color }}>
+      {status.toUpperCase()}
+    </span>
+  )
+}
+
+// ── Main Component ─────────────────────────────────────────────────────────────
 
 export default function ParentDashboard() {
-  const [children, setChildren]         = useState<Child[]>([])
-  const [lessons, setLessons]           = useState<UpcomingLesson[]>([])
-  const [stats, setStats]               = useState<DashStats | null>(null)
-  const [parentName, setParentName]     = useState('')
-  const [loading, setLoading]           = useState(true)
+  const [children, setChildren] = useState<Child[]>([])
+  const [lessons, setLessons]   = useState<UpcomingLesson[]>([])
+  const [stats, setStats]       = useState<DashStats | null>(null)
+  const [parentName, setParentName] = useState('')
+  const [loading, setLoading]   = useState(true)
   const supabase = createClient()
+  const greeting = getGreeting()
 
   useEffect(() => {
     async function load() {
-      // Auth guard
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/auth/login'; return }
 
-      // Parent profile
       const { data: _pd } = await (supabase as any)
-        .from('profiles')
-        .select('first_name, last_name, role')
-        .eq('id', user.id)
-        .single()
+        .from('profiles').select('first_name, last_name, role').eq('id', user.id).single()
       const profile = _pd as { role: string; first_name: string | null; last_name: string | null } | null
 
-      if (profile?.role !== 'parent') {
-        window.location.href = '/auth/login'
-        return
-      }
+      if (profile?.role !== 'parent') { window.location.href = '/auth/login'; return }
       setParentName(profile.first_name ?? '')
 
-      // Children linked to this parent
       const { data: childLinks } = await supabase
         .from('parent_children')
-        .select(`
-          child_id,
-          profiles!parent_children_child_id_fkey (
-            id, first_name, last_name, email, avatar_url, country
-          )
-        `)
+        .select(`child_id, profiles!parent_children_child_id_fkey (id, first_name, last_name, email, avatar_url, country)`)
         .eq('parent_id', user.id)
 
       const childList: Child[] = (childLinks ?? []).map((r: any) => r.profiles).filter(Boolean)
       setChildren(childList)
 
       const childIds = childList.map(c => c.id)
-
       if (childIds.length === 0) {
         setStats({ totalChildren: 0, totalLessonsThisMonth: 0, totalSpentThisMonth: 0, nextLessonIn: null })
         setLoading(false)
         return
       }
 
-      // Upcoming lessons for all children
       const now = new Date().toISOString()
       const { data: upcomingRaw } = await supabase
         .from('lessons')
@@ -152,29 +219,18 @@ export default function ParentDashboard() {
       }))
       setLessons(upcomingLessons)
 
-      // Stats: lessons this month
-      const monthStart = new Date()
-      monthStart.setDate(1)
-      monthStart.setHours(0, 0, 0, 0)
+      const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0)
 
       const { count: monthCount } = await supabase
-        .from('lessons')
-        .select('id', { count: 'exact', head: true })
-        .in('student_id', childIds)
-        .eq('status', 'completed')
-        .gte('scheduled_at', monthStart.toISOString())
+        .from('lessons').select('id', { count: 'exact', head: true })
+        .in('student_id', childIds).eq('status', 'completed').gte('scheduled_at', monthStart.toISOString())
 
-      // Spend this month
       const { data: payments } = await supabase
-        .from('payments')
-        .select('gross_amount_usd')
-        .in('student_id', childIds)
-        .eq('status', 'succeeded')
-        .gte('created_at', monthStart.toISOString())
+        .from('payments').select('gross_amount_usd')
+        .in('student_id', childIds).eq('status', 'succeeded').gte('created_at', monthStart.toISOString())
 
       const totalSpent = (payments ?? []).reduce((sum: number, p: any) => sum + (p.gross_amount_usd ?? 0), 0)
 
-      // Next lesson countdown
       let nextLessonIn: string | null = null
       if (upcomingLessons.length > 0) {
         const diff = new Date(upcomingLessons[0].scheduled_at).getTime() - Date.now()
@@ -185,192 +241,196 @@ export default function ParentDashboard() {
         else nextLessonIn = `${mins}m`
       }
 
-      setStats({
-        totalChildren: childList.length,
-        totalLessonsThisMonth: monthCount ?? 0,
-        totalSpentThisMonth: totalSpent,
-        nextLessonIn,
-      })
+      setStats({ totalChildren: childList.length, totalLessonsThisMonth: monthCount ?? 0, totalSpentThisMonth: totalSpent, nextLessonIn })
       setLoading(false)
     }
     load()
   }, [])
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  const kpiCards = [
+    { label: 'Children Enrolled',   value: stats?.totalChildren ?? 0,                          icon: '👨‍👩‍👧', gradient: 'linear-gradient(135deg, #E8F5EE 0%, #D4EDDA 100%)', iconBg: 'rgba(27,94,55,0.12)' },
+    { label: 'Lessons This Month',  value: stats?.totalLessonsThisMonth ?? 0,                  icon: '📚',    gradient: 'linear-gradient(135deg, #FFF8E8 0%, #FDEFC9 100%)', iconBg: 'rgba(184,149,42,0.12)' },
+    { label: 'Spent This Month',    value: `$${(stats?.totalSpentThisMonth ?? 0).toFixed(0)}`, icon: '💳',    gradient: 'linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%)', iconBg: 'rgba(99,102,241,0.12)' },
+    { label: 'Next Lesson In',      value: stats?.nextLessonIn ?? '—',                         icon: '⏰',    gradient: 'linear-gradient(135deg, #F5F0FF 0%, #EDE9FE 100%)', iconBg: 'rgba(139,92,246,0.12)' },
+  ]
 
   return (
     <div>
-      <div>
 
-        {/* Header */}
-        <div className="mb-8">
-          {loading
-            ? <Skeleton className="h-8 w-64 mb-2" />
-            : <h1 className="font-['Playfair_Display'] text-3xl font-bold text-[#0D3D20]">
-                Assalamu Alaikum, {parentName} 🌙
-              </h1>
-          }
-          <p className="text-[#666] mt-1 text-sm">Here's an overview of your children's Quran learning journey.</p>
+      {/* Greeting */}
+      <div className="mb-6">
+        <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: '#B8952A' }}>
+          {greeting}
+        </p>
+        <h1 className="text-2xl md:text-3xl font-bold" style={{ color: '#0D3D20', fontFamily: "'Playfair Display', serif" }}>
+          {loading ? 'Welcome back' : `Assalamu Alaikum, ${parentName}`} 🌙
+        </h1>
+        <p className="text-sm mt-1" style={{ color: '#6B7A6B' }}>
+          Here&apos;s an overview of your children&apos;s Quran learning journey.
+        </p>
+      </div>
+
+      {/* Banner */}
+      <DashboardBanner role="parent" />
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {kpiCards.map(card => (
+          <KpiCard key={card.label} loading={loading} {...card} />
+        ))}
+      </div>
+
+      {/* Quick Actions */}
+      <div className="mb-8">
+        <h2 className="text-base font-bold mb-4" style={{ color: '#0D3D20', fontFamily: "'Playfair Display', serif" }}>
+          Quick Actions
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <QuickAction icon="👨‍👩‍👧" label="My Children"      href="/platform/parent/children" color="rgba(27,94,55,0.08)" />
+          <QuickAction icon="🔍"    label="Browse Teachers" href="/platform/teachers"         color="rgba(184,149,42,0.10)" />
+          <QuickAction icon="💳"    label="Billing"         href="/platform/parent/billing"   color="rgba(99,102,241,0.10)" />
+          <QuickAction icon="📞"    label="Support"         href="/contact"                   color="rgba(139,92,246,0.10)" />
         </div>
+      </div>
 
-        {/* Banner */}
-        <DashboardBanner role="parent" />
+      {/* Main grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
 
-        {/* Stats row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+        {/* Upcoming Lessons — 2 cols */}
+        <div className="xl:col-span-2">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-bold" style={{ color: '#0D3D20', fontFamily: "'Playfair Display', serif" }}>
+              Upcoming Lessons
+            </h2>
+            <Link href="/platform/parent/children" className="text-xs font-medium" style={{ color: '#1B5E37' }}>
+              View all →
+            </Link>
+          </div>
+
           {loading ? (
-            Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28" />)
+            <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-20" />)}</div>
+          ) : lessons.length === 0 ? (
+            <EmptyState
+              emoji="📅"
+              title="No upcoming lessons"
+              sub="Book a teacher for your child to get started."
+              cta="Browse Teachers"
+              ctaHref="/platform/teachers"
+            />
           ) : (
-            <>
-              {[
-                { label: 'Children Enrolled', value: stats?.totalChildren ?? 0, icon: '👨‍👩‍👧', suffix: '' },
-                { label: 'Lessons This Month', value: stats?.totalLessonsThisMonth ?? 0, icon: '📚', suffix: '' },
-                { label: 'Spent This Month', value: `$${(stats?.totalSpentThisMonth ?? 0).toFixed(0)}`, icon: '💳', suffix: '', raw: true },
-                { label: 'Next Lesson In', value: stats?.nextLessonIn ?? '—', icon: '⏰', suffix: '', raw: true },
-              ].map((s, i) => (
-                <div key={i} className="bg-white rounded-2xl p-5 border border-[#EDE6D6] shadow-sm">
-                  <div className="text-2xl mb-2">{s.icon}</div>
-                  <div className="font-['Playfair_Display'] text-2xl font-bold text-[#1B5E37]">
-                    {s.raw ? s.value : `${s.value}${s.suffix}`}
+            <div className="space-y-3">
+              {lessons.map(lesson => (
+                <div
+                  key={lesson.id}
+                  className="rounded-2xl p-4 flex items-center gap-4 transition-all"
+                  style={{ background: '#fff', border: '1px solid rgba(27,94,55,0.08)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.08)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)' }}
+                >
+                  {/* Teacher avatar */}
+                  <div className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 overflow-hidden"
+                    style={{ background: 'linear-gradient(135deg, #1B5E37, #2A7A4A)', color: '#fff' }}>
+                    {lesson.teacher_avatar_url
+                      ? <img src={lesson.teacher_avatar_url} alt="" className="w-full h-full object-cover" />
+                      : getInitials(lesson.teacher_first_name, lesson.teacher_last_name)
+                    }
                   </div>
-                  <div className="text-xs text-[#888] mt-1">{s.label}</div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate" style={{ color: '#0D3D20' }}>
+                      {lesson.course_title ?? 'Quran Lesson'}
+                    </p>
+                    <p className="text-xs truncate mt-0.5" style={{ color: '#8A9A8A' }}>
+                      {lesson.student_first_name} · with {lesson.teacher_first_name} {lesson.teacher_last_name}
+                    </p>
+                  </div>
+
+                  {/* Date + status */}
+                  <div className="text-right flex-shrink-0 space-y-1">
+                    <p className="text-xs font-semibold" style={{ color: '#0D3D20' }}>{formatDate(lesson.scheduled_at)}</p>
+                    <p className="text-xs" style={{ color: '#8A9A8A' }}>{formatTime(lesson.scheduled_at)}</p>
+                    <StatusBadge status={lesson.status} />
+                  </div>
                 </div>
               ))}
-            </>
+            </div>
           )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-          {/* Upcoming lessons — 2/3 width */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl border border-[#EDE6D6] shadow-sm overflow-hidden">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-[#F5F0E8]">
-                <h2 className="font-semibold text-[#0D3D20] text-base">Upcoming Lessons</h2>
-                <a href="/platform/student/lessons" className="text-xs text-[#1B5E37] font-semibold hover:underline">
-                  View all →
-                </a>
-              </div>
-
-              {loading ? (
-                <div className="p-6 space-y-4">
-                  {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16" />)}
-                </div>
-              ) : lessons.length === 0 ? (
-                <div className="py-16 text-center text-[#999]">
-                  <div className="text-4xl mb-3">📅</div>
-                  <p className="font-medium text-[#555]">No upcoming lessons</p>
-                  <p className="text-sm mt-1">Book a session for your child to get started.</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-[#F5F0E8]">
-                  {lessons.map(lesson => (
-                    <div key={lesson.id} className="flex items-center gap-4 px-6 py-4 hover:bg-[#FAFAF7] transition-colors">
-                      {/* Teacher avatar */}
-                      <div className="w-10 h-10 rounded-full bg-[#1B5E37] flex items-center justify-center text-white text-sm font-bold flex-shrink-0 overflow-hidden">
-                        {lesson.teacher_avatar_url
-                          ? <img src={lesson.teacher_avatar_url} alt="" className="w-full h-full object-cover" />
-                          : getInitials(lesson.teacher_first_name, lesson.teacher_last_name)
-                        }
-                      </div>
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-[#0D3D20] truncate">
-                          {lesson.course_title ?? 'Quran Lesson'}
-                        </p>
-                        <p className="text-xs text-[#888] truncate">
-                          {lesson.student_first_name} · Teacher {lesson.teacher_first_name} {lesson.teacher_last_name}
-                        </p>
-                      </div>
-                      {/* Date + status */}
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-xs font-semibold text-[#333]">{formatDate(lesson.scheduled_at)}</p>
-                        <p className="text-xs text-[#888]">{formatTime(lesson.scheduled_at)}</p>
-                        <span className={`inline-block mt-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusColor(lesson.status)}`}>
-                          {lesson.status}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+        {/* Right col — children + hadith */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-bold" style={{ color: '#0D3D20', fontFamily: "'Playfair Display', serif" }}>
+              Your Children
+            </h2>
+            <Link href="/platform/parent/children" className="text-xs font-medium" style={{ color: '#1B5E37' }}>
+              Manage →
+            </Link>
           </div>
 
-          {/* Children list — 1/3 width */}
-          <div>
-            <div className="bg-white rounded-2xl border border-[#EDE6D6] shadow-sm overflow-hidden">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-[#F5F0E8]">
-                <h2 className="font-semibold text-[#0D3D20] text-base">Your Children</h2>
-                <a href="/platform/parent/children" className="text-xs text-[#1B5E37] font-semibold hover:underline">
-                  Manage →
-                </a>
-              </div>
-
-              {loading ? (
-                <div className="p-4 space-y-3">
-                  {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-14" />)}
-                </div>
-              ) : children.length === 0 ? (
-                <div className="py-10 px-4 text-center text-[#999]">
-                  <div className="text-3xl mb-2">👶</div>
-                  <p className="text-sm text-[#555] font-medium">No children linked yet</p>
-                  <a
-                    href="/platform/parent/children"
-                    className="mt-3 inline-block bg-[#1B5E37] text-white text-xs font-semibold px-4 py-2 rounded-full hover:bg-[#2A7A4A] transition-colors"
-                  >
-                    + Add Child
-                  </a>
-                </div>
-              ) : (
-                <div className="divide-y divide-[#F5F0E8]">
-                  {children.map(child => (
-                    <div key={child.id} className="flex items-center gap-3 px-5 py-4">
-                      <div className="w-9 h-9 rounded-full bg-[#B8952A] flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                        {getInitials(child.first_name, child.last_name)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-[#0D3D20] truncate">
-                          {child.first_name} {child.last_name}
-                        </p>
-                        <p className="text-xs text-[#888] truncate">{child.email}</p>
-                      </div>
-                    </div>
-                  ))}
-                  <div className="px-5 py-3">
-                    <a
-                      href="/platform/parent/children"
-                      className="block w-full text-center bg-[#F5F0E8] text-[#1B5E37] text-xs font-semibold px-4 py-2.5 rounded-xl hover:bg-[#EDE6D6] transition-colors"
-                    >
-                      + Add Another Child
-                    </a>
+          {loading ? (
+            <div className="space-y-3">{[1,2].map(i => <Skeleton key={i} className="h-16" />)}</div>
+          ) : children.length === 0 ? (
+            <EmptyState
+              emoji="👶"
+              title="No children linked yet"
+              sub="Add your child's account to monitor their progress."
+              cta="+ Add Child"
+              ctaHref="/platform/parent/children"
+            />
+          ) : (
+            <div className="space-y-3">
+              {children.map(child => (
+                <div
+                  key={child.id}
+                  className="rounded-2xl p-4 flex items-center gap-3 transition-all"
+                  style={{ background: '#fff', border: '1px solid rgba(27,94,55,0.08)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.08)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)' }}
+                >
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+                    style={{ background: 'linear-gradient(135deg, #B8952A, #D4AF50)', color: '#fff' }}>
+                    {getInitials(child.first_name, child.last_name)}
                   </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate" style={{ color: '#0D3D20' }}>
+                      {child.first_name} {child.last_name}
+                    </p>
+                    <p className="text-xs truncate mt-0.5" style={{ color: '#9A9A8A' }}>{child.email}</p>
+                  </div>
+                  <Link href="/platform/teachers"
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg flex-shrink-0 transition-all"
+                    style={{ background: 'rgba(27,94,55,0.08)', color: '#1B5E37' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#1B5E37'; (e.currentTarget as HTMLElement).style.color = '#fff' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(27,94,55,0.08)'; (e.currentTarget as HTMLElement).style.color = '#1B5E37' }}>
+                    Book
+                  </Link>
                 </div>
-              )}
-            </div>
+              ))}
 
-            {/* Quick links */}
-            <div className="mt-4 bg-white rounded-2xl border border-[#EDE6D6] shadow-sm p-5">
-              <h3 className="text-sm font-semibold text-[#0D3D20] mb-3">Quick Actions</h3>
-              <div className="space-y-2">
-                {[
-                  { label: '📖 Browse Teachers', href: '/platform/teachers' },
-                  { label: '💳 Billing & Payments', href: '/platform/parent/billing' },
-                  { label: '📞 Contact Support', href: '/contact' },
-                ].map(link => (
-                  <a
-                    key={link.href}
-                    href={link.href}
-                    className="flex items-center gap-2 text-sm text-[#555] hover:text-[#1B5E37] hover:bg-[#F5F0E8] px-3 py-2 rounded-lg transition-colors"
-                  >
-                    {link.label}
-                  </a>
-                ))}
-              </div>
+              <Link href="/platform/parent/children"
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl text-sm font-semibold transition-all"
+                style={{ background: 'transparent', border: '2px dashed rgba(27,94,55,0.2)', color: '#1B5E37' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(27,94,55,0.04)' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                + Add Another Child
+              </Link>
             </div>
+          )}
+
+          {/* Quranic reminder — same as other dashboards */}
+          <div className="rounded-2xl p-5 text-center"
+            style={{ background: 'linear-gradient(135deg, #0D3D20 0%, #1B5E37 100%)' }}>
+            <p className="text-lg mb-2" style={{ fontFamily: "'Amiri', serif", color: '#D4AF50', direction: 'rtl' }}>
+              وَمَا يَعْلَمُ جُنُودَ رَبِّكَ إِلَّا هُوَ
+            </p>
+            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>
+              &ldquo;The greatest gift a parent can give their child is a good education.&rdquo;
+            </p>
           </div>
-
         </div>
+
       </div>
     </div>
   )
