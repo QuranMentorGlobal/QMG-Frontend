@@ -119,8 +119,8 @@ export default function TeachersLandingPage() {
         .tc:hover { box-shadow: 0 20px 50px rgba(0,0,0,.12); transform: translateY(-6px); border-color: var(--gold-pale); }
 
         /* 1:1 teacher images */
-        .tc-img { aspect-ratio: 1/1; overflow: hidden; position: relative; background: var(--cream-d); }
-        .tc-img img { width: 100%; height: 100%; object-fit: cover; object-position: top; transition: transform .5s; display: block; }
+        .tc-img { position: relative; width: 100%; aspect-ratio: 1/1; overflow: hidden; background: var(--cream-d); }
+        .tc-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; transition: transform .5s; display: block; }
         .tc:hover .tc-img img { transform: scale(1.05); }
 
         /* Verification badge overlay */
