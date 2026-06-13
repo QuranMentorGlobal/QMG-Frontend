@@ -185,17 +185,18 @@ export default function LandingPage() {
         /* ── Hero ── */
         .hero{position:relative;min-height:100svh;background:var(--green-dark);overflow:hidden;display:flex;align-items:center}
         .hero-slider{position:absolute;inset:0;z-index:0}
-        .hs{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transition:opacity 1.8s ease}
+        .hs{position:absolute;inset:0;opacity:0;transition:opacity 1.8s ease;overflow:hidden}
         .hs.active{opacity:1}
+        .hs img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;display:block}
         /* REDUCED overlay — was .82/.65/.42, now .62/.45/.30 for better image visibility */
         .hs::after{content:'';position:absolute;inset:0;background:linear-gradient(110deg,rgba(13,61,32,.65) 0%,rgba(13,61,32,.45) 55%,rgba(13,61,32,.28) 100%)}
 
         /* LOCAL image references — replace Unsplash URLs below with /images/hero/ paths */
-        .hs1{background-image:url('/images/hero/hero-1.png')}
-        .hs2{background-image:url('/images/hero/hero-2.png')}
-        .hs3{background-image:url('/images/hero/hero-3.png')}
+        
+        
+        
         /* Fallback gradient shown when images haven't been uploaded yet */
-        .hs1.no-img,.hs2.no-img,.hs3.no-img{background:linear-gradient(135deg,var(--green-dark),var(--green))}
+        
 
         .hero-geo{position:absolute;inset:0;z-index:1;opacity:.022;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cpolygon points='40,6 46,26 66,20 54,36 70,40 54,44 66,60 46,54 40,74 34,54 14,60 26,44 10,40 26,36 14,20 34,26' fill='none' stroke='%23D4AF50' stroke-width='1'/%3E%3C/svg%3E");background-size:80px 80px}
         .hero-orb{position:absolute;border-radius:50%;filter:blur(70px);z-index:1;pointer-events:none}
@@ -456,9 +457,32 @@ export default function LandingPage() {
       <section className="hero" id="home">
         <div className="hero-slider">
           {/* LOCAL image paths — add 1920×1080 JPGs to /public/images/hero/ */}
-          <div className="hs hs1 active"></div>
-          <div className="hs hs2"></div>
-          <div className="hs hs3"></div>
+          {/* Slide 1 — fetchPriority high so it loads immediately */}
+          <div className="hs hs1 active">
+            <img
+              src="/images/hero/hero-1.png"
+              alt="Students learning Quran online"
+              fetchPriority="high"
+              decoding="async"
+            />
+          </div>
+          {/* Slides 2 & 3 — lazy, only load when needed */}
+          <div className="hs hs2">
+            <img
+              src="/images/hero/hero-2.png"
+              alt="Live Quran lesson with certified teacher"
+              loading="lazy"
+              decoding="async"
+            />
+          </div>
+          <div className="hs hs3">
+            <img
+              src="/images/hero/hero-3.png"
+              alt="Quran and Islamic learning environment"
+              loading="lazy"
+              decoding="async"
+            />
+          </div>
         </div>
         <div className="hero-geo"></div>
         <div className="hero-orb orb1"></div>
