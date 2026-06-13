@@ -77,8 +77,8 @@ export default function AboutPage() {
       <LandingNav />
 
       {/* ── Page Hero ── */}
-      <section className="page-hero" style={{backgroundImage:"url('/images/about/about-hero.jpg')"}}>
-        <div className="page-hero-bg" style={{backgroundImage:"url('/images/about/about-hero.jpg')"}}></div>
+      <section className="page-hero" style={{backgroundImage:"url('/images/about/about-hero.png')"}}>
+        <div className="page-hero-bg" style={{backgroundImage:"url('/images/about/about-hero.png')"}}></div>
         <div className="container">
           <div className="breadcrumb">
             <Link href="/">Home</Link><span className="sep">›</span><span>About Us</span>
@@ -97,9 +97,9 @@ export default function AboutPage() {
             {/* Portrait image */}
             <div className="founder-imgw">
               <div className="founder-main">
-                {/* LOCAL: public/images/founder/founder.jpg — 4:5 portrait */}
+                {/* LOCAL: public/images/founder/founder.png — 4:5 portrait */}
                 <img
-                  src="/images/founder/founder.jpg"
+                  src="/images/founder/founder.png"
                   alt="Hafiz Awais — Founder of QuranMentorGlobal"
                   loading="lazy"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
@@ -147,8 +147,8 @@ export default function AboutPage() {
           {/* Row 1 */}
           <div className="why-item">
             <div className="why-img">
-              {/* LOCAL: public/images/about/mission.jpg — 4:3 */}
-              <img src="/images/about/mission.jpg" alt="Accessible Quran education" loading="lazy"
+              {/* LOCAL: public/images/about/mission.png — 4:3 */}
+              <img src="/images/about/mission.png" alt="Accessible Quran education" loading="lazy"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
             </div>
             <div>
@@ -162,8 +162,8 @@ export default function AboutPage() {
           {/* Row 2 — reversed */}
           <div className="why-item reverse">
             <div className="why-img">
-              {/* LOCAL: public/images/about/vision.jpg — 4:3 */}
-              <img src="/images/about/vision.jpg" alt="Trust and verification" loading="lazy"
+              {/* LOCAL: public/images/about/vision.png — 4:3 */}
+              <img src="/images/about/vision.png" alt="Trust and verification" loading="lazy"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
             </div>
             <div>
@@ -177,8 +177,8 @@ export default function AboutPage() {
           {/* Row 3 */}
           <div className="why-item">
             <div className="why-img">
-              {/* LOCAL: public/images/about/global-impact.jpg — 4:3 */}
-              <img src="/images/about/global-impact.jpg" alt="Global Muslim community" loading="lazy"
+              {/* LOCAL: public/images/about/global-impact.png — 4:3 */}
+              <img src="/images/about/global-impact.png" alt="Global Muslim community" loading="lazy"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
             </div>
             <div>
