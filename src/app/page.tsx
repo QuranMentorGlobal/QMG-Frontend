@@ -150,10 +150,7 @@ export default function LandingPage() {
         .section-hd{text-align:center;margin-bottom:64px}.section-hd .ss{margin:0 auto}
 
         /* ── Ayah bar ── */
-        .ayah-bar{background:var(--green-dark);padding:8px 0;border-bottom:1px solid rgba(184,149,42,.2)}
-        .ayah-bar .container{display:flex;justify-content:space-between;align-items:center;gap:12px}
-        .ayah-ar{font-family:var(--fa);font-size:13px;color:var(--gold-light);direction:rtl}
-        .ayah-en{font-size:11px;color:rgba(255,255,255,.35);font-style:italic;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:420px}
+
 
         /* ── Language dropdown ── */
         .lang-drop{position:relative}
@@ -388,7 +385,7 @@ export default function LandingPage() {
         /* ── Responsive ── */
         @media(max-width:1024px){.fgrid{grid-template-columns:1fr 1fr;gap:32px}.feat-grid{grid-template-columns:repeat(2,1fr)}.cgrid{grid-template-columns:repeat(2,1fr)}.tgrid{grid-template-columns:repeat(2,1fr)}.tsgrid{grid-template-columns:repeat(2,1fr)}}
         @media(max-width:900px){.nav-links,.nav-cta{display:none}.ham{display:flex}.about-inner,.how-inner,.contact-inner{grid-template-columns:1fr;gap:48px}}
-        @media(max-width:768px){.nav-links,.nav-cta{display:none!important}.ham{display:flex!important}.hero-inner{padding:80px 0 60px}.hero-stats{gap:20px}.fgrid{grid-template-columns:1fr;gap:24px}.cgrid{grid-template-columns:1fr}.tgrid{grid-template-columns:1fr 1fr}.tsgrid{grid-template-columns:1fr}.sgrid{grid-template-columns:repeat(2,1fr);gap:20px}.ctab-inner{grid-template-columns:1fr!important;text-align:center;padding:40px 24px}.ctab-btns{flex-direction:row;justify-content:center;flex-wrap:wrap}.section-hd{margin-bottom:40px}.feat-grid{grid-template-columns:1fr}.features,.about,.courses,.how,.teachers-sec,.testi,.stats-sec,.ctab,.contact-sec{padding:64px 0}.cform{padding:28px 20px}.fg-row{grid-template-columns:1fr}.ayah-en{display:none}.footer-ayah{flex-direction:column;gap:8px}}
+        @media(max-width:768px){.nav-links,.nav-cta{display:none!important}.ham{display:flex!important}.hero-inner{padding:80px 0 60px}.hero-stats{gap:20px}.fgrid{grid-template-columns:1fr;gap:24px}.cgrid{grid-template-columns:1fr}.tgrid{grid-template-columns:1fr 1fr}.tsgrid{grid-template-columns:1fr}.sgrid{grid-template-columns:repeat(2,1fr);gap:20px}.ctab-inner{grid-template-columns:1fr!important;text-align:center;padding:40px 24px}.ctab-btns{flex-direction:row;justify-content:center;flex-wrap:wrap}.section-hd{margin-bottom:40px}.feat-grid{grid-template-columns:1fr}.features,.about,.courses,.how,.teachers-sec,.testi,.stats-sec,.ctab,.contact-sec{padding:64px 0}.cform{padding:28px 20px}.fg-row{grid-template-columns:1fr}.footer-ayah{flex-direction:column;gap:8px}}
         @media(max-width:480px){.hero-btns{flex-direction:column;align-items:flex-start}.hero-btns .btn{width:100%;justify-content:center}.tgrid{grid-template-columns:1fr}.ctab-inner{padding:32px 20px}.ctab-btns .btn{width:100%;justify-content:center}}
       `}</style>
 
@@ -400,13 +397,7 @@ export default function LandingPage() {
         <div className="loader-bar-wrap"><div className="loader-bar" id="qmg-bar"></div></div>
       </div>
 
-      {/* AYAH BAR */}
-      <div className="ayah-bar">
-        <div className="container">
-          <span className="ayah-ar">خَيْرُكُمْ مَنْ تَعَلَّمَ الْقُرْآنَ وَعَلَّمَهُ</span>
-          <span className="ayah-en">The best among you are those who learn the Quran and teach it — Sahih Al-Bukhari</span>
-        </div>
-      </div>
+
 
       {/* NAVBAR */}
       <nav className="nav" id="qmg-nav">
