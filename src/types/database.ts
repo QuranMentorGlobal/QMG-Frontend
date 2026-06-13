@@ -76,6 +76,10 @@ export interface Booking {
   price_usd:    number
   is_trial:     boolean
   notes:        string | null
+  cancel_reason: string | null
+  cancelled_by: string | null
+  student_notes: string | null
+  teacher_notes: string | null
   created_at:   string
   updated_at:   string
 }
@@ -180,13 +184,41 @@ export interface TeacherBookingView {
 export interface Database {
   public: {
     Tables: {
-      profiles: { Row: Profile }
-      teacher_profiles: { Row: TeacherProfile }
-      courses: { Row: Course }
-      bookings: { Row: Booking }
-      lessons: { Row: Lesson }
-      reviews: { Row: Review }
-      payments: { Row: Payment }
+      profiles: {
+        Row: Profile
+        Insert: Partial<Profile> & { id: string; role: UserRole }
+        Update: Partial<Profile>
+      }
+      teacher_profiles: {
+        Row: TeacherProfile
+        Insert: Partial<TeacherProfile> & { user_id: string }
+        Update: Partial<TeacherProfile>
+      }
+      courses: {
+        Row: Course
+        Insert: Partial<Course> & { teacher_id: string; title: string; price_usd: number }
+        Update: Partial<Course>
+      }
+      bookings: {
+        Row: Booking
+        Insert: Partial<Booking> & { student_id: string; teacher_id: string }
+        Update: Partial<Booking>
+      }
+      lessons: {
+        Row: Lesson
+        Insert: Partial<Lesson> & { booking_id: string; student_id: string; teacher_id: string; scheduled_at: string }
+        Update: Partial<Lesson>
+      }
+      reviews: {
+        Row: Review
+        Insert: Partial<Review> & { student_id: string; teacher_id: string; rating: number }
+        Update: Partial<Review>
+      }
+      payments: {
+        Row: Payment
+        Insert: Partial<Payment> & { student_id: string; teacher_id: string; gross_amount_usd: number }
+        Update: Partial<Payment>
+      }
     }
     Views: {
       public_teachers: { Row: PublicTeacher }
