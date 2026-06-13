@@ -438,12 +438,13 @@ export const LANDING_CSS = `
   /* ── Page hero (used on About / Courses / Teachers / Contact) ── */
   .page-hero { position: relative; padding: 100px 0 80px; text-align: center; overflow: hidden; }
   /* Hero uses a local background image — each page sets its own via inline style */
-  .page-hero::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(13,61,32,.88) 0%, rgba(27,94,55,.72) 60%, rgba(13,61,32,.80) 100%); z-index: 0; }
+  .page-hero::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(13,61,32,.52) 0%, rgba(13,61,32,.35) 55%, rgba(13,61,32,.48) 100%); z-index: 0; }
   .page-hero-bg { position: absolute; inset: 0; background-size: cover; background-position: center; z-index: -1; }
+  .page-hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; z-index: -1; display: block; }
   .page-hero > .container { position: relative; z-index: 1; }
-  .page-hero h1 { font-family: var(--ff); font-size: clamp(32px,5vw,58px); font-weight: 800; color: #fff; line-height: 1.12; margin-bottom: 18px; }
+  .page-hero h1 { font-family: var(--ff); font-size: clamp(32px,5vw,58px); font-weight: 800; color: #fff; line-height: 1.12; margin-bottom: 18px; text-shadow: 0 2px 16px rgba(0,0,0,.4); }
   .page-hero h1 span { color: var(--gold-light); }
-  .page-hero p { font-size: 18px; color: rgba(255,255,255,.72); max-width: 520px; margin: 0 auto 32px; line-height: 1.72; }
+  .page-hero p { font-size: 19px; color: rgba(255,255,255,.92); max-width: 540px; margin: 0 auto 32px; line-height: 1.72; font-weight: 500; text-shadow: 0 1px 8px rgba(0,0,0,.4); }
   .breadcrumb { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; color: rgba(255,255,255,.45); margin-bottom: 20px; }
   .breadcrumb a { color: rgba(255,255,255,.6); transition: color .2s; }
   .breadcrumb a:hover { color: #fff; }
