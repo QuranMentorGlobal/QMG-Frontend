@@ -10,12 +10,12 @@ export default function AboutPage() {
         .founder { padding: 100px 0; background: #fff; overflow: hidden; }
         .founder-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; }
         .founder-imgw { position: relative; }
-        .founder-main {
+        .founder-main { position: relative; /* 4:5 portrait */
           border-radius: var(--rx); overflow: hidden;
           box-shadow: 0 24px 64px rgba(0,0,0,.14);
           aspect-ratio: 4/5; background: var(--cream-d);
         }
-        .founder-main img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+        .founder-main img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
         .founder-badge {
           position: absolute; bottom: -20px; right: -20px;
           background: linear-gradient(135deg, var(--green), var(--green-mid));
@@ -37,8 +37,8 @@ export default function AboutPage() {
         .why-item:last-child { margin-bottom: 0; }
         .why-item.reverse { direction: rtl; }
         .why-item.reverse > * { direction: ltr; }
-        .why-img { border-radius: var(--rx); overflow: hidden; aspect-ratio: 4/3; background: var(--cream-d); box-shadow: var(--shl); }
-        .why-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .why-img { position: relative; border-radius: var(--rx); overflow: hidden; aspect-ratio: 4/3; background: var(--cream-d); box-shadow: var(--shl); }
+        .why-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
         .why-tag { display: inline-flex; align-items: center; gap: 8px; background: var(--gold-pale); color: var(--green-dark); font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; padding: 6px 14px; border-radius: 50px; margin-bottom: 16px; }
 
         /* ── Mission cards ── */
@@ -77,8 +77,8 @@ export default function AboutPage() {
       <LandingNav />
 
       {/* ── Page Hero ── */}
-      <section className="page-hero" style={{backgroundImage:"url('/images/about/about-hero.png')"}}>
-        <div className="page-hero-bg" style={{backgroundImage:"url('/images/about/about-hero.png')"}}></div>
+      <section className="page-hero" style={{backgroundImage:"url('/images/about/about-hero.jpg')"}}>
+        <div className="page-hero-bg" style={{backgroundImage:"url('/images/about/about-hero.jpg')"}}></div>
         <div className="container">
           <div className="breadcrumb">
             <Link href="/">Home</Link><span className="sep">›</span><span>About Us</span>
@@ -97,9 +97,9 @@ export default function AboutPage() {
             {/* Portrait image */}
             <div className="founder-imgw">
               <div className="founder-main">
-                {/* LOCAL: public/images/founder/founder.png — 4:5 portrait */}
+                {/* LOCAL: public/images/founder/founder.jpg — 4:5 portrait */}
                 <img
-                  src="/images/founder/founder.png"
+                  src="/images/founder/founder.jpg"
                   alt="Hafiz Awais — Founder of QuranMentorGlobal"
                   loading="lazy"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
@@ -147,8 +147,8 @@ export default function AboutPage() {
           {/* Row 1 */}
           <div className="why-item">
             <div className="why-img">
-              {/* LOCAL: public/images/about/mission.png — 4:3 */}
-              <img src="/images/about/mission.png" alt="Accessible Quran education" loading="lazy"
+              {/* LOCAL: public/images/about/mission.jpg — 4:3 */}
+              <img src="/images/about/mission.jpg" alt="Accessible Quran education" loading="lazy"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
             </div>
             <div>
@@ -162,8 +162,8 @@ export default function AboutPage() {
           {/* Row 2 — reversed */}
           <div className="why-item reverse">
             <div className="why-img">
-              {/* LOCAL: public/images/about/vision.png — 4:3 */}
-              <img src="/images/about/vision.png" alt="Trust and verification" loading="lazy"
+              {/* LOCAL: public/images/about/vision.jpg — 4:3 */}
+              <img src="/images/about/vision.jpg" alt="Trust and verification" loading="lazy"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
             </div>
             <div>
@@ -177,8 +177,8 @@ export default function AboutPage() {
           {/* Row 3 */}
           <div className="why-item">
             <div className="why-img">
-              {/* LOCAL: public/images/about/global-impact.png — 4:3 */}
-              <img src="/images/about/global-impact.png" alt="Global Muslim community" loading="lazy"
+              {/* LOCAL: public/images/about/global-impact.jpg — 4:3 */}
+              <img src="/images/about/global-impact.jpg" alt="Global Muslim community" loading="lazy"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
             </div>
             <div>
