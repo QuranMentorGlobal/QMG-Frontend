@@ -93,6 +93,7 @@ const studentNav: NavItem[] = [
   { label: 'Browse Teachers', href: '/platform/teachers',          icon: Icons.Search },
   { label: 'My Bookings',     href: '/platform/student/bookings',  icon: Icons.Bookings },
   { label: 'My Lessons',      href: '/platform/student/lessons',   icon: Icons.Lessons },
+  { label: 'Billing',         href: '/platform/student/billing',   icon: Icons.Billing },
   { label: 'Messages',        href: '/platform/messages',          icon: Icons.Message },
   { label: 'Profile',         href: '/platform/student/profile',   icon: Icons.Profile },
 ]
@@ -102,10 +103,8 @@ const teacherNav: NavItem[] = [
   { label: 'Verification', href: '/platform/teacher/verification', icon: Icons.Verification },
   { label: 'My Courses',   href: '/platform/teacher/courses',      icon: Icons.Courses },
   { label: 'Bookings',     href: '/platform/teacher/bookings',     icon: Icons.Bookings },
-  { label: 'Earnings',      href: '/platform/teacher/earnings',    icon: Icons.Billing },
   { label: 'Messages',     href: '/platform/messages',             icon: Icons.Message },
   { label: 'Profile',      href: '/platform/teacher/profile',      icon: Icons.Profile },
-
 ]
 
 const parentNav: NavItem[] = [
@@ -135,6 +134,7 @@ const pageTitles: Record<string, string> = {
   '/platform/student/bookings':     'My Bookings',
   '/platform/student/lessons':      'My Lessons',
   '/platform/student/profile':      'My Profile',
+  '/platform/student/billing':      'Billing',
   '/platform/teacher/dashboard':    'Dashboard',
   '/platform/teacher/verification': 'Verification',
   '/platform/teacher/courses':      'My Courses',
