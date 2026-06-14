@@ -235,7 +235,7 @@ export default function LandingPage() {
         .fc-back p{font-size:13px;color:rgba(255,255,255,.78);line-height:1.72}
         .fc-back .fbtn{display:inline-flex;align-items:center;gap:6px;background:var(--gold);color:#fff;font-size:13px;font-weight:700;padding:9px 22px;border-radius:50px;margin-top:4px;transition:transform .2s,box-shadow .2s}
         .fc-back .fbtn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(184,149,42,.4)}
-        .fc-img{position:relative;width:100%;height:200px;overflow:hidden;background:var(--cream-d);flex-shrink:0}
+        .fc-img{position:relative;width:100%;height:220px;overflow:hidden;background:var(--cream-d);flex-shrink:0}
         .fc-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .6s var(--ease);display:block}
         .fc:hover .fc-img img{transform:scale(1.07)}
         .fc-body{padding:22px 24px 0;flex:1}
