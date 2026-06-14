@@ -305,7 +305,7 @@ export default function MessagesPage() {
           })
           // Auto-mark read if not from me
           if (me && msg.sender_id !== me.id) {
-            supabase.from('messages').update({ is_read: true }).eq('id', msg.id)
+            ;(supabase.from('messages') as any).update({ is_read: true }).eq('id', msg.id)
           }
         }
       ).subscribe()
