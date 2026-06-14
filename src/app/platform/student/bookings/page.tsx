@@ -53,7 +53,7 @@ export default function StudentBookings() {
       const { data } = await supabase
         .from('bookings')
         .select(`
-          id, status, start_date, session_time, recurrence,
+          id, status, start_date, session_time, recurrence, teacher_id,
           price_usd, is_trial, created_at, duration_mins,
           courses ( title, course_type, duration_mins ),
           profiles!bookings_teacher_id_fkey ( first_name, last_name, avatar_url, country )
