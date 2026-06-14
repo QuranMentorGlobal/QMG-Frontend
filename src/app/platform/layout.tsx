@@ -93,6 +93,7 @@ const studentNav: NavItem[] = [
   { label: 'Browse Teachers', href: '/platform/teachers',          icon: Icons.Search },
   { label: 'My Bookings',     href: '/platform/student/bookings',  icon: Icons.Bookings },
   { label: 'My Lessons',      href: '/platform/student/lessons',   icon: Icons.Lessons },
+  { label: 'Messages',        href: '/platform/messages',          icon: Icons.Message },
   { label: 'Profile',         href: '/platform/student/profile',   icon: Icons.Profile },
 ]
 
@@ -101,6 +102,7 @@ const teacherNav: NavItem[] = [
   { label: 'Verification', href: '/platform/teacher/verification', icon: Icons.Verification },
   { label: 'My Courses',   href: '/platform/teacher/courses',      icon: Icons.Courses },
   { label: 'Bookings',     href: '/platform/teacher/bookings',     icon: Icons.Bookings },
+  { label: 'Messages',     href: '/platform/messages',             icon: Icons.Message },
   { label: 'Profile',      href: '/platform/teacher/profile',      icon: Icons.Profile },
 ]
 
@@ -109,6 +111,7 @@ const parentNav: NavItem[] = [
   { label: 'My Children',     href: '/platform/parent/children',  icon: Icons.Children },
   { label: 'Billing',         href: '/platform/parent/billing',   icon: Icons.Billing },
   { label: 'Browse Teachers', href: '/platform/teachers',         icon: Icons.Search },
+  { label: 'Messages',        href: '/platform/messages',         icon: Icons.Message },
 ]
 
 const roleConfig: Record<UserRole, { label: string; portalTag: string; dashHref: string; roleColor: string }> = {
@@ -139,6 +142,7 @@ const pageTitles: Record<string, string> = {
   '/platform/parent/children':      'My Children',
   '/platform/parent/billing':       'Billing',
   '/platform/teachers':             'Browse Teachers',
+  '/platform/messages':             'Messages',
 }
 
 // ── NavLink ────────────────────────────────────────────────────────────────────
@@ -259,101 +263,331 @@ function Sidebar({ nav, role, userName, onSignOut }: {
   )
 }
 
-// ── Top Bar (Desktop) ──────────────────────────────────────────────────────────
-// Center: big logo + platform name. Left: page title. Right: actions.
+// ── Notification + Message types ──────────────────────────────────────────────
 
-function TopBar({ userName, role, pathname }: { userName: string; role: UserRole; pathname: string }) {
+interface Notif {
+  id: string
+  type: string
+  title: string
+  body: string
+  href: string | null
+  is_read: boolean
+  created_at: string
+}
+
+interface ConvPreview {
+  id: string
+  other_name: string
+  other_initial: string
+  last_message: string | null
+  last_message_at: string | null
+  unread: boolean
+}
+
+// ── Top Bar (Desktop) ──────────────────────────────────────────────────────────
+
+function TopBar({ userName, role, pathname, userId }: {
+  userName: string; role: UserRole; pathname: string; userId: string
+}) {
+  const router = useRouter()
+  const supabase = createClient()
   const cfg = roleConfig[role]
   const pageTitle = pageTitles[pathname] ?? 'Platform'
   const initial = userName[0]?.toUpperCase() ?? '?'
-
-  // Breadcrumb e.g. "Student / Dashboard"
   const parts = pathname.split('/').filter(Boolean).slice(1)
   const breadcrumb = parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' / ')
+
+  const [showNotifs, setShowNotifs]   = useState(false)
+  const [showMessages, setShowMessages] = useState(false)
+  const [notifs, setNotifs]           = useState<Notif[]>([])
+  const [convs, setConvs]             = useState<ConvPreview[]>([])
+  const [unreadNotifs, setUnreadNotifs] = useState(0)
+  const [unreadMsgs, setUnreadMsgs]   = useState(0)
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      const t = e.target as HTMLElement
+      if (!t.closest('[data-dropdown]')) {
+        setShowNotifs(false)
+        setShowMessages(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  // Load counts on mount
+  useEffect(() => {
+    if (!userId) return
+    loadCounts()
+
+    // Realtime: new notifications
+    const sub = supabase
+      .channel('notif-count')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` }, () => {
+        setUnreadNotifs(n => n + 1)
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(sub) }
+  }, [userId])
+
+  async function loadCounts() {
+    const { count: nc } = await (supabase as any)
+      .from('notifications').select('id', { count: 'exact', head: true })
+      .eq('user_id', userId).eq('is_read', false)
+    setUnreadNotifs(nc ?? 0)
+
+    const { count: mc } = await (supabase as any)
+      .from('messages').select('id', { count: 'exact', head: true })
+      .eq('is_read', false)
+      .neq('sender_id', userId)
+      .in('conversation_id', await getUserConvIds())
+    setUnreadMsgs(mc ?? 0)
+  }
+
+  async function getUserConvIds() {
+    const { data } = await (supabase as any)
+      .from('conversations').select('id')
+      .or(`participant_1.eq.${userId},participant_2.eq.${userId}`)
+    return (data ?? []).map((c: any) => c.id)
+  }
+
+  async function openNotifs() {
+    setShowMessages(false)
+    setShowNotifs(v => !v)
+    if (!showNotifs) {
+      const { data } = await (supabase as any)
+        .from('notifications').select('*')
+        .eq('user_id', userId).order('created_at', { ascending: false }).limit(15)
+      setNotifs(data ?? [])
+    }
+  }
+
+  async function openMessages() {
+    setShowNotifs(false)
+    setShowMessages(v => !v)
+    if (!showMessages) {
+      const { data } = await (supabase as any)
+        .from('conversations').select('*')
+        .or(`participant_1.eq.${userId},participant_2.eq.${userId}`)
+        .order('last_message_at', { ascending: false }).limit(10)
+
+      if (!data) return
+      const previews: ConvPreview[] = await Promise.all(data.map(async (c: any) => {
+        const otherId = c.participant_1 === userId ? c.participant_2 : c.participant_1
+        const { data: p } = await (supabase as any).from('profiles').select('first_name, last_name').eq('id', otherId).single()
+        const name = p ? `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim() : 'User'
+        const { count: uc } = await (supabase as any).from('messages').select('id', { count: 'exact', head: true })
+          .eq('conversation_id', c.id).eq('is_read', false).neq('sender_id', userId)
+        return { id: c.id, other_name: name, other_initial: name[0]?.toUpperCase() ?? '?', last_message: c.last_message, last_message_at: c.last_message_at, unread: (uc ?? 0) > 0 }
+      }))
+      setConvs(previews)
+    }
+  }
+
+  async function markNotifRead(id: string, href: string | null) {
+    await (supabase as any).from('notifications').update({ is_read: true }).eq('id', id)
+    setNotifs(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
+    setUnreadNotifs(n => Math.max(0, n - 1))
+    if (href) { setShowNotifs(false); router.push(href) }
+  }
+
+  async function markAllNotifsRead() {
+    await (supabase as any).from('notifications').update({ is_read: true }).eq('user_id', userId).eq('is_read', false)
+    setNotifs(prev => prev.map(n => ({ ...n, is_read: true })))
+    setUnreadNotifs(0)
+  }
+
+  function notifIcon(type: string) {
+    if (type === 'booking_request')   return '📋'
+    if (type === 'booking_confirmed') return '✅'
+    if (type === 'booking_cancelled') return '❌'
+    if (type === 'new_message')       return '💬'
+    if (type === 'lesson_reminder')   return '⏰'
+    return '🔔'
+  }
+
+  function timeAgo(iso: string) {
+    const diff = Date.now() - new Date(iso).getTime()
+    const m = Math.floor(diff / 60000)
+    if (m < 1)  return 'just now'
+    if (m < 60) return `${m}m ago`
+    const h = Math.floor(m / 60)
+    if (h < 24) return `${h}h ago`
+    return `${Math.floor(h / 24)}d ago`
+  }
 
   return (
     <div
       className="hidden lg:flex items-center h-16 sticky top-0 z-30 px-6"
-      style={{
-        background: 'rgba(245,240,232,0.95)',
-        backdropFilter: 'blur(12px)',
-        borderBottom: '1px solid rgba(27,94,55,0.08)',
-      }}
+      style={{ background: 'rgba(245,240,232,0.95)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(27,94,55,0.08)' }}
     >
-      {/* Left: page title + breadcrumb */}
+      {/* Left */}
       <div className="w-48 flex-shrink-0">
-        <p className="text-base font-bold leading-tight" style={{ color: '#0D3D20', fontFamily: "'Playfair Display', serif" }}>
-          {pageTitle}
-        </p>
-        <p className="text-[11px] mt-0.5" style={{ color: '#9A9A8A' }}>
-          {breadcrumb}
-        </p>
+        <p className="text-base font-bold leading-tight" style={{ color: '#0D3D20', fontFamily: "'Playfair Display', serif" }}>{pageTitle}</p>
+        <p className="text-[11px] mt-0.5" style={{ color: '#9A9A8A' }}>{breadcrumb}</p>
       </div>
 
-      {/* Center: Logo + Platform name (big, prominent) */}
+      {/* Center */}
       <div className="flex-1 flex items-center justify-center gap-3">
         <img src="/logo.png" alt="QMG" className="h-9 w-auto object-contain" />
         <div style={{ lineHeight: 1 }}>
-          <p
-            className="font-bold whitespace-nowrap"
-            style={{
-              fontFamily: "'Playfair Display', serif",
-              fontSize: 26,
-              color: '#0D3D20',
-              letterSpacing: '-0.3px',
-            }}
-          >
+          <p className="font-bold whitespace-nowrap" style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, color: '#0D3D20', letterSpacing: '-0.3px' }}>
             Quran<span style={{ color: '#B8952A' }}>Mentor</span>Global
           </p>
           <div className="flex items-center gap-1.5 mt-1">
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: cfg.roleColor }} />
-            <p
-              className="text-[10px] font-semibold tracking-widest uppercase"
-              style={{ color: cfg.roleColor }}
-            >
-              {cfg.portalTag}
-            </p>
+            <p className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: cfg.roleColor }}>{cfg.portalTag}</p>
           </div>
         </div>
       </div>
 
-      {/* Right: actions */}
+      {/* Right */}
       <div className="w-48 flex-shrink-0 flex items-center justify-end gap-2">
-        {/* Notification bell */}
-        <button
-          className="relative w-9 h-9 rounded-xl flex items-center justify-center transition-all"
-          style={{ background: 'rgba(27,94,55,0.06)', color: '#5A7A6A' }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(27,94,55,0.12)' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(27,94,55,0.06)' }}
-          aria-label="Notifications"
-        >
-          {Icons.Bell}
-          <span
-            className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
-            style={{ background: '#B8952A', border: '1.5px solid #F5F0E8' }}
-          />
-        </button>
 
-        {/* Messages */}
-        <button
-          className="w-9 h-9 rounded-xl flex items-center justify-center transition-all"
-          style={{ background: 'rgba(27,94,55,0.06)', color: '#5A7A6A' }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(27,94,55,0.12)' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(27,94,55,0.06)' }}
-          aria-label="Messages"
-        >
-          {Icons.Message}
-        </button>
+        {/* ── Notification Bell ── */}
+        <div className="relative" data-dropdown>
+          <button
+            onClick={openNotifs}
+            className="relative w-9 h-9 rounded-xl flex items-center justify-center transition-all"
+            style={{ background: showNotifs ? 'rgba(27,94,55,0.14)' : 'rgba(27,94,55,0.06)', color: '#5A7A6A' }}
+            aria-label="Notifications"
+          >
+            {Icons.Bell}
+            {unreadNotifs > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 rounded-full flex items-center justify-center text-[9px] font-bold text-white"
+                style={{ background: '#B8952A' }}>
+                {unreadNotifs > 9 ? '9+' : unreadNotifs}
+              </span>
+            )}
+          </button>
 
-        {/* Divider */}
+          {showNotifs && (
+            <div className="absolute right-0 top-11 w-80 rounded-2xl overflow-hidden shadow-2xl z-50"
+              style={{ background: '#fff', border: '1px solid rgba(27,94,55,0.1)' }}>
+              <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'rgba(27,94,55,0.07)' }}>
+                <p className="font-bold text-sm" style={{ color: '#0D3D20' }}>Notifications</p>
+                {unreadNotifs > 0 && (
+                  <button onClick={markAllNotifsRead} className="text-xs font-medium" style={{ color: '#1B5E37' }}>
+                    Mark all read
+                  </button>
+                )}
+              </div>
+
+              <div className="max-h-80 overflow-y-auto">
+                {notifs.length === 0 ? (
+                  <div className="py-10 text-center">
+                    <div className="text-3xl mb-2">🔔</div>
+                    <p className="text-sm font-medium" style={{ color: '#0D3D20' }}>No notifications yet</p>
+                    <p className="text-xs mt-1" style={{ color: '#9A9A8A' }}>We&apos;ll notify you about bookings, lessons and messages.</p>
+                  </div>
+                ) : notifs.map(n => (
+                  <button
+                    key={n.id}
+                    onClick={() => markNotifRead(n.id, n.href)}
+                    className="w-full flex items-start gap-3 px-4 py-3 text-left transition-all border-b last:border-0"
+                    style={{
+                      borderColor: 'rgba(27,94,55,0.05)',
+                      background: n.is_read ? 'transparent' : 'rgba(184,149,42,0.05)',
+                    }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(27,94,55,0.04)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = n.is_read ? 'transparent' : 'rgba(184,149,42,0.05)' }}
+                  >
+                    <span className="text-lg flex-shrink-0 mt-0.5">{notifIcon(n.type)}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold truncate" style={{ color: '#0D3D20' }}>{n.title}</p>
+                      <p className="text-xs mt-0.5 line-clamp-2" style={{ color: '#6B7A6B' }}>{n.body}</p>
+                      <p className="text-[10px] mt-1" style={{ color: '#B8B8A8' }}>{timeAgo(n.created_at)}</p>
+                    </div>
+                    {!n.is_read && <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ background: '#B8952A' }} />}
+                  </button>
+                ))}
+              </div>
+
+              <div className="px-4 py-3 border-t" style={{ borderColor: 'rgba(27,94,55,0.07)' }}>
+                <Link href="/platform/messages" onClick={() => setShowNotifs(false)}
+                  className="block text-center text-xs font-semibold" style={{ color: '#1B5E37' }}>
+                  View all notifications →
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Messages ── */}
+        <div className="relative" data-dropdown>
+          <button
+            onClick={openMessages}
+            className="w-9 h-9 rounded-xl flex items-center justify-center transition-all"
+            style={{ background: showMessages ? 'rgba(27,94,55,0.14)' : 'rgba(27,94,55,0.06)', color: '#5A7A6A' }}
+            aria-label="Messages"
+          >
+            {Icons.Message}
+            {unreadMsgs > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 rounded-full flex items-center justify-center text-[9px] font-bold text-white"
+                style={{ background: '#1B5E37' }}>
+                {unreadMsgs > 9 ? '9+' : unreadMsgs}
+              </span>
+            )}
+          </button>
+
+          {showMessages && (
+            <div className="absolute right-0 top-11 w-80 rounded-2xl overflow-hidden shadow-2xl z-50"
+              style={{ background: '#fff', border: '1px solid rgba(27,94,55,0.1)' }}>
+              <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'rgba(27,94,55,0.07)' }}>
+                <p className="font-bold text-sm" style={{ color: '#0D3D20' }}>Messages</p>
+                <Link href="/platform/messages" onClick={() => setShowMessages(false)}
+                  className="text-xs font-medium" style={{ color: '#1B5E37' }}>
+                  Open inbox
+                </Link>
+              </div>
+
+              <div className="max-h-80 overflow-y-auto">
+                {convs.length === 0 ? (
+                  <div className="py-10 text-center">
+                    <div className="text-3xl mb-2">💬</div>
+                    <p className="text-sm font-medium" style={{ color: '#0D3D20' }}>No messages yet</p>
+                    <p className="text-xs mt-1" style={{ color: '#9A9A8A' }}>Start a conversation with your teacher or student.</p>
+                  </div>
+                ) : convs.map(c => (
+                  <Link
+                    key={c.id}
+                    href={`/platform/messages?conv=${c.id}`}
+                    onClick={() => setShowMessages(false)}
+                    className="flex items-center gap-3 px-4 py-3 border-b last:border-0 transition-all"
+                    style={{ borderColor: 'rgba(27,94,55,0.05)', background: c.unread ? 'rgba(27,94,55,0.04)' : 'transparent', textDecoration: 'none' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(27,94,55,0.06)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = c.unread ? 'rgba(27,94,55,0.04)' : 'transparent' }}
+                  >
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+                      style={{ background: 'linear-gradient(135deg, #1B5E37, #2A7A4A)', color: '#fff' }}>
+                      {c.other_initial}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold truncate" style={{ color: '#0D3D20' }}>{c.other_name}</p>
+                      <p className="text-xs truncate mt-0.5" style={{ color: '#9A9A8A' }}>{c.last_message ?? 'Start a conversation'}</p>
+                    </div>
+                    {c.unread && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#1B5E37' }} />}
+                  </Link>
+                ))}
+              </div>
+
+              <div className="px-4 py-3 border-t" style={{ borderColor: 'rgba(27,94,55,0.07)' }}>
+                <Link href="/platform/messages" onClick={() => setShowMessages(false)}
+                  className="block text-center text-xs font-semibold" style={{ color: '#1B5E37' }}>
+                  Open full inbox →
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="w-px h-6" style={{ background: 'rgba(27,94,55,0.12)' }} />
 
-        {/* Avatar */}
-        <div
-          className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold cursor-pointer"
-          style={{ background: 'linear-gradient(135deg, #B8952A, #D4AF50)', color: '#fff' }}
-          title={userName}
-        >
+        <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold cursor-pointer"
+          style={{ background: 'linear-gradient(135deg, #B8952A, #D4AF50)', color: '#fff' }} title={userName}>
           {initial}
         </div>
       </div>
@@ -472,6 +706,7 @@ function LoadingScreen() {
 export default function PlatformLayout({ children }: { children: React.ReactNode }) {
   const [role, setRole]     = useState<UserRole>('student')
   const [userName, setName] = useState('')
+  const [userId, setUserId] = useState('')
   const [ready, setReady]   = useState(false)
   const router   = useRouter()
   const pathname = usePathname()
@@ -490,6 +725,7 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
 
       if (!data) { router.push('/auth/login'); return }
 
+      setUserId(user.id)
       setRole((data.role as UserRole) ?? 'student')
       setName(`${data.first_name ?? ''} ${data.last_name ?? ''}`.trim() || 'User')
       setReady(true)
@@ -517,7 +753,7 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
       {/* Everything to the right of sidebar */}
       <div className="lg:ml-60 flex flex-col min-h-screen">
         {/* Sticky top bar (desktop only) */}
-        <TopBar userName={userName} role={role} pathname={pathname} />
+        <TopBar userName={userName} role={role} pathname={pathname} userId={userId} />
 
         {/* Page content — full width, no max-w centering that creates blank space */}
         <main className="flex-1 pt-14 lg:pt-0">
